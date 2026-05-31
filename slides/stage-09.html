@@ -1,0 +1,468 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>毕业项目 · 端到端 AI 产品 · 授课</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+<style>
+.reveal{font-family:-apple-system,"PingFang SC",sans-serif}
+.reveal h1,.reveal h2,.reveal h3{text-transform:none;letter-spacing:-.5px;color:#e6e9ef}
+.cover-h1{font-size:2.0em;background:linear-gradient(90deg,#fff,#5b8cff,#8b5cf6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.cover-goal{color:#9aa3b2;font-size:.7em}
+.chap-title{font-size:1.5em;color:#5b8cff}
+.sub-title{font-size:1.0em;color:#22d3ee;border-bottom:2px solid #2a2f3a;padding-bottom:10px}
+.slide-body{font-size:.62em;line-height:1.55;text-align:left}
+.reveal pre{width:100%;font-size:.5em;box-shadow:none;border:1px solid #2a2f3a;border-radius:10px}
+.reveal pre code{max-height:520px;padding:14px}
+.reveal table{font-size:.55em}
+.reveal ul,.reveal ol{font-size:.95em}
+.reveal a{color:#5b8cff}
+.reveal blockquote{font-size:.6em;background:rgba(251,191,36,.08);border-left:3px solid #fbbf24;width:100%}
+.lv-badge{display:inline-block;font-size:.4em;padding:6px 16px;border-radius:30px;color:#0f1115;font-weight:700;margin-bottom:20px}
+.lv-基础{background:#34d399}.lv-进阶{background:#5b8cff}.lv-高级{background:#8b5cf6}.lv-部署{background:#22d3ee}.lv-综合{background:#f472b6}
+.reveal .slide-body :not(pre)>code{background:#1d212b;color:#ffd9a8;padding:1px 6px;border-radius:5px;font-size:.85em}
+.topbar{position:fixed;top:12px;left:16px;z-index:30;font-size:13px;color:#6b7280}
+.topbar a{color:#5b8cff;text-decoration:none}
+</style></head><body>
+<div class="topbar"><a href="index.html">← 全部课程</a> · 按 <b>S</b> 看演讲备注 · <b>F</b> 全屏 · <b>ESC</b> 总览</div>
+<div class="reveal"><div class="slides">
+<section data-background-gradient="linear-gradient(135deg,#171a21,#1d212b)">
+<div class="lv-badge lv-综合">综合 · 阶段 9</div>
+<h1 class="cover-h1">毕业项目 · 端到端 AI 产品</h1>
+<p class="cover-goal">独立完成一个打通数据→RAG/Agent→评估→部署→监控全链路的真实 AI 产品，并能在简历与面试中讲清楚</p>
+<aside class="notes">本阶段目标: 独立完成一个打通数据→RAG/Agent→评估→部署→监控全链路的真实 AI 产品，并能在简历与面试中讲清楚。前置要求: 完成 stage-01~08 全部内容。</aside>
+</section>
+<section><section>
+<h2 class="chap-title">第 1 节：如何选题——真实价值优先，而非技术炫技</h2>
+<p>第 1 节：如何选题——真实价值优先，而非技术炫技</p>
+<aside class="notes">讲解「第 1 节：如何选题——真实价值优先，而非技术炫技」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>毕业项目（Capstone）的第一道、也是最容易翻车的坎，是<strong>选题</strong>。绝大多数人会犯两个相反的错误：要么选一个"又一个 ChatGPT 套壳聊天机器人"，毫无辨识度；要么贪大求全，想做一个"颠覆行业的 AI 平台"，三周后烂尾。好的 Capstone 选题遵循一个核心原则——<strong>真实价值优先</strong>：它要解决一个<strong>具体的人</strong>在<strong>具体场景</strong>下的<strong>真实痛点</strong>，哪怕这个痛点很小。</p>
+<p>怎么判断一个选题靠不靠谱？用四个问题筛：</p>
+<ul>
+<li><strong>真实性（Real）</strong>：这个痛点是真的吗？最好你自己或身边人就是用户。"我每周要读 30 篇 arXiv 论文，想要个能按我研究方向筛选+摘要+追问的助手"——这是真痛点；"做一个万能 AI 助手"——这是伪需求。</li>
+<li><strong>AI 必要性（AI-native）</strong>：这个问题<strong>非 LLM 不可</strong>吗？如果用传统规则/搜索就能解决，那 AI 只是噱头。要选那些<strong>涉及非结构化文本理解、需要推理或多步规划</strong>的问题——这正是 LLM 不可替代的地方。</li>
+<li><strong>可行性（Feasible）</strong>：数据拿得到吗？三四周做得完吗？要能切出一个"窄而深"的最小闭环，而不是"宽而浅"的半成品。</li>
+<li><strong>可展示性（Demoable）</strong>：能不能跑给别人看、并讲清楚价值？面试官没耐心看你解释，要让产品自己说话。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：评判 Capstone 价值的不是"用了多少种时髦技术"，而是"有没有人愿意用第二次"。一个能让一个真实用户每天打开的小工具，远胜过一个技术堆砌但没人用的"大平台"。窄而深，永远优于宽而浅。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>选题不是写代码，但你可以用一份<strong>结构化的选题评估表</strong>强迫自己想清楚。把它当成项目的第一个产出物。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># select_topic.py —— 用打分卡量化对比候选选题，避免凭感觉拍板</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TopicScore</span><span class="p">:</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">real_pain</span><span class="p">:</span> <span class="nb">int</span>      <span class="c1"># 真实痛点强度 1-5（你/身边人是否真受其苦）</span>
+    <span class="n">ai_native</span><span class="p">:</span> <span class="nb">int</span>      <span class="c1"># 非 LLM 不可的程度 1-5（传统方法能否替代）</span>
+    <span class="n">feasible</span><span class="p">:</span> <span class="nb">int</span>       <span class="c1"># 三四周可完成度 1-5（数据/范围/复杂度）</span>
+    <span class="n">demoable</span><span class="p">:</span> <span class="nb">int</span>       <span class="c1"># 可展示与讲述性 1-5</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">total</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="c1"># ai_native 与 real_pain 加权更高：决定项目&quot;有没有意义&quot;的是它们</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">real_pain</span> <span class="o">*</span> <span class="mf">1.5</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ai_native</span> <span class="o">*</span> <span class="mf">1.5</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">feasible</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">demoable</span>
+
+
+<span class="n">candidates</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">TopicScore</span><span class="p">(</span><span class="s2">&quot;个人 arXiv 论文追踪+问答助手&quot;</span><span class="p">,</span> <span class="n">real_pain</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">ai_native</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">feasible</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">demoable</span><span class="o">=</span><span class="mi">5</span><span class="p">),</span>
+    <span class="n">TopicScore</span><span class="p">(</span><span class="s2">&quot;万能 AI 客服平台&quot;</span><span class="p">,</span>            <span class="n">real_pain</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">ai_native</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">feasible</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">demoable</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">TopicScore</span><span class="p">(</span><span class="s2">&quot;企业制度文档智能问答&quot;</span><span class="p">,</span>          <span class="n">real_pain</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">ai_native</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">feasible</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">demoable</span><span class="o">=</span><span class="mi">4</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="o">.</span><span class="n">total</span><span class="p">,</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">total</span><span class="si">:</span><span class="s2">5.1f</span><span class="si">}</span><span class="s2">  </span><span class="si">{</span><span class="n">t</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># 输出按总分排序，最高分通常就是你该做的那个</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://www.paulgraham.com/startupideas.html">Y Combinator: How to Get Startup Ideas (Paul Graham)</a> — "做你自己想要的东西"，选题第一原则的源头。</li>
+<li><a href="https://a16z.com/emerging-architectures-for-llm-applications/">Emerging Architectures for LLM Applications (a16z)</a> — 看清 LLM 应用的典型形态，帮你判断选题落在哪类架构。</li>
+<li><a href="https://www.deeplearning.ai/short-courses/">Build a Large Language Model Application (DeepLearning.AI)</a> — 大量真实小项目案例，激发选题灵感。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>列出 3 个你真实想做的候选选题，用上面的打分卡逐项打分并写下理由。然后为最高分的那个写一段 100 字的"电梯演讲"：用户是谁、痛点是什么、你的产品如何解决、为什么非 AI 不可。验收标准：你能向一个非技术朋友讲清楚这个产品，并让他说出"这个我可能会用"。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 2 节：端到端架构设计——把前 8 个阶段串成一条链</h2>
+<p>第 2 节：端到端架构设计——把前 8 个阶段串成一条链</p>
+<aside class="notes">讲解「第 2 节：端到端架构设计——把前 8 个阶段串成一条链」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>Capstone 的技术内核，是把你过去 8 个阶段学的零件组装成一个<strong>完整的数据流闭环</strong>。一个生产级 AI 产品的标准链路是：</p>
+<p><strong>数据上游 → 索引/检索（RAG）→ 编排/推理（Agent）→ 评估 → 部署 → 监控</strong>，且监控的反馈要能回流去改进前面每一环。</p>
+<p>逐段拆解它们如何咬合：</p>
+<ul>
+<li><strong>数据上游（stage 数据工程）</strong>：数据从哪来、怎么清洗、怎么切分（chunking）。这是 RAG 质量的天花板——<strong>垃圾进，垃圾出</strong>。文档解析、分块策略、元数据抽取都在这层决定。</li>
+<li><strong>索引/检索（stage RAG）</strong>：embedding 模型选型、向量库、检索策略（向量+关键词混合检索、rerank）。检索召回不到，后面再强的模型也白搭。</li>
+<li><strong>编排/推理（stage Agent）</strong>：是简单的"检索+生成"，还是需要多步规划、调工具、循环反思的 Agent？复杂度按需选择，<strong>别为了用 Agent 而用 Agent</strong>。</li>
+<li><strong>评估（stage-07）</strong>：建立离线评估集，定义质量指标（忠实度 faithfulness、相关性、答案正确率），作为迭代的标尺和 CI 门禁。</li>
+<li><strong>部署（stage-08）</strong>：FastAPI 服务化 + Docker 容器化。</li>
+<li><strong>监控（stage-08）</strong>：Langfuse 追踪 + 成本/护栏，线上反馈回流。</li>
+</ul>
+<p>设计架构时最重要的判断是<strong>复杂度匹配</strong>：从最简单的能跑通的链路（朴素 RAG）起步，<strong>只在评估数据告诉你"这里不够好"时才加复杂度</strong>（加 rerank、加 Agent、加多轮）。这叫"演进式架构"，是对抗过度工程的唯一良药。</p>
+<blockquote>
+<p><strong>专家心法</strong>：先画数据流图，再写一行代码。把"一条数据/一个请求"从入口到出口走一遍，在每个箭头上问"这一步可能怎么失败、怎么测、怎么观测"。架构图画得清楚的人，代码通常也写得干净——因为他想清楚了边界。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>把整条链路用接口（Protocol）先定义出来，让架构边界显式、各模块可独立替换与测试。这是"面向接口编程"在 AI 系统里的体现。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># architecture.py —— 先定义契约，再填实现。每一层都可独立 mock 与替换</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Chunk</span><span class="p">:</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="nb">dict</span>          <span class="c1"># 来源、页码、时间戳等，溯源与过滤都靠它</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Answer</span><span class="p">:</span>
+    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">sources</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chunk</span><span class="p">]</span>    <span class="c1"># 答案必须可溯源，这是 RAG 产品可信度的关键</span>
+    <span class="n">trace_id</span><span class="p">:</span> <span class="nb">str</span>           <span class="c1"># 关联 Langfuse trace，打通监控</span>
+
+<span class="nd">@runtime_checkable</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Retriever</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;检索层契约：可换成向量检索、混合检索、带 rerank 的检索。&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">top_k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chunk</span><span class="p">]:</span> <span class="o">...</span>
+
+<span class="nd">@runtime_checkable</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Generator</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;生成层契约：可换模型、换 Prompt、换成多步 Agent。&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">generate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Chunk</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span> <span class="o">...</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">RAGPipeline</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;编排层：把各层组装起来。依赖的是接口而非具体实现，便于测试与演进。&quot;&quot;&quot;</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">retriever</span><span class="p">:</span> <span class="n">Retriever</span><span class="p">,</span> <span class="n">generator</span><span class="p">:</span> <span class="n">Generator</span><span class="p">,</span> <span class="n">guardrail</span><span class="p">,</span> <span class="n">tracer</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">retriever</span> <span class="o">=</span> <span class="n">retriever</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">generator</span> <span class="o">=</span> <span class="n">generator</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">guardrail</span> <span class="o">=</span> <span class="n">guardrail</span>      <span class="c1"># stage-08 的护栏</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span> <span class="o">=</span> <span class="n">tracer</span>            <span class="c1"># stage-08 的可观测性</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">answer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Answer</span><span class="p">:</span>
+        <span class="n">ok</span><span class="p">,</span> <span class="n">reason</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">guardrail</span><span class="o">.</span><span class="n">check_input</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ok</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Answer</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;请求被拦截：</span><span class="si">{</span><span class="n">reason</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="p">[],</span> <span class="n">trace_id</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">tracer</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="n">query</span><span class="p">)</span> <span class="k">as</span> <span class="n">t</span><span class="p">:</span>          <span class="c1"># 监控贯穿全程</span>
+            <span class="n">chunks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">retriever</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>     <span class="c1"># 数据/检索层</span>
+            <span class="n">raw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">generator</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">chunks</span><span class="p">)</span>  <span class="c1"># 推理层</span>
+            <span class="n">safe</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">guardrail</span><span class="o">.</span><span class="n">mask_pii</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>           <span class="c1"># 输出护栏（方法名与 stage-08 对齐）</span>
+            <span class="k">return</span> <span class="n">Answer</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">safe</span><span class="p">,</span> <span class="n">sources</span><span class="o">=</span><span class="n">chunks</span><span class="p">,</span> <span class="n">trace_id</span><span class="o">=</span><span class="n">t</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://a16z.com/emerging-architectures-for-llm-applications/">Emerging Architectures for LLM Applications (a16z)</a> — 业界 LLM 应用参考架构，看清各层职责。</li>
+<li><a href="https://langchain-ai.github.io/langgraph/">LangGraph 文档</a> — 用图来编排有状态、多步、可循环的 Agent，复杂编排首选。</li>
+<li><a href="https://adr.github.io/">Architecture Decision Records (ADR)</a> — 把"为什么这样选型"记录下来的轻量方法，面试讲项目时极有用。</li>
+<li><a href="https://aws.amazon.com/what-is/retrieval-augmented-generation/">What is RAG? (AWS)</a> — RAG 链路各环节的清晰梳理。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>为你的 Capstone 画一张端到端架构图（用 Excalidraw / Mermaid 均可），标出六个环节、数据在每个箭头上的形态、以及每一环的失败模式与观测点。再用 Protocol/接口把核心模块的契约写出来（先不实现）。验收标准：架构图能让别人在 2 分钟内看懂你的数据如何流动，且接口定义清晰到可以分给不同人并行开发。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 3 节：技术选型决策——在约束下做权衡，并记录理由</h2>
+<p>第 3 节：技术选型决策——在约束下做权衡，并记录理由</p>
+<aside class="notes">讲解「第 3 节：技术选型决策——在约束下做权衡，并记录理由」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>工程的本质是<strong>在约束下做权衡</strong>，技术选型最能体现一个工程师的成熟度。Capstone 里你会面对一连串选择：用哪个模型？哪个向量库？要不要上 Agent 框架？自研还是用 LangChain？这里没有标准答案，<strong>只有针对你的约束（成本、延迟、数据隐私、团队熟悉度、可维护性）的合理权衡</strong>。</p>
+<p>几个高频决策点和判断框架：</p>
+<ul>
+<li><strong>模型选型</strong>：闭源 API（GPT/Claude，质量高、省心、按量付费、数据出境）vs 开源自托管（Llama/Qwen，可私有化、固定成本、需运维 GPU）。判断锚点：有没有数据隐私硬要求？流量规模够不够摊薄自托管成本？</li>
+<li><strong>向量库</strong>：原型期 Chroma/FAISS（本地、零成本）；要持久化与过滤上 pgvector（复用 Postgres，运维简单）；超大规模才考虑 Milvus/专用云服务。<strong>别一上来就上重型方案</strong>。</li>
+<li><strong>是否用 Agent 框架</strong>：LangChain/LlamaIndex 抽象多、起步快但黑盒、调试难；自己用原生 SDK + 少量胶水代码，可控、透明但要多写代码。<strong>学习/小项目建议至少自己手写一遍核心循环</strong>，理解原理后再决定是否用框架。</li>
+<li><strong>编排复杂度</strong>：能用朴素 RAG 解决就别上 Agent；能用单次调用解决就别上多轮。</li>
+</ul>
+<p>关键不在于"选了什么"，而在于<strong>你能否说清"为什么这么选、放弃了什么、什么情况下你会改选"</strong>。这就是 ADR（架构决策记录）的价值，也是面试官真正想听的。</p>
+<blockquote>
+<p><strong>专家心法</strong>：面试时被问"你为什么用 X"，最差的回答是"因为大家都用"或"教程里是这么写的"。最好的回答是："在我的约束下，X 和 Y 我都评估过，X 在 A 维度更优、代价是 B，而 B 对我的场景影响小——如果未来流量涨 10 倍，我会重新评估切到 Y。" 选型的深度，藏在你被放弃的那个选项里。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>把选型决策写成机器可读、可对比、可追溯的 ADR。代码项目里建一个 <code>docs/adr/</code> 目录长期维护它。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># adr.py —— 用代码结构表达&quot;架构决策记录&quot;，强迫自己写清权衡</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ADR</span><span class="p">:</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">context</span><span class="p">:</span> <span class="nb">str</span>                       <span class="c1"># 我面临什么问题、有哪些约束</span>
+    <span class="n">decision</span><span class="p">:</span> <span class="nb">str</span>                      <span class="c1"># 我决定怎么做</span>
+    <span class="n">alternatives</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>            <span class="c1"># 我评估过、但放弃的选项</span>
+    <span class="n">consequences</span><span class="p">:</span> <span class="nb">str</span>                  <span class="c1"># 这个决定的代价与风险</span>
+    <span class="n">revisit_when</span><span class="p">:</span> <span class="nb">str</span>                  <span class="c1"># 什么信号出现时我会重新评估</span>
+
+<span class="n">adr_vectorstore</span> <span class="o">=</span> <span class="n">ADR</span><span class="p">(</span>
+    <span class="nb">id</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">title</span><span class="o">=</span><span class="s2">&quot;向量库选用 pgvector 而非 Milvus&quot;</span><span class="p">,</span>
+    <span class="n">context</span><span class="o">=</span><span class="s2">&quot;个人项目，文档约 2 万 chunk，需按 metadata 过滤，希望运维成本极低。&quot;</span><span class="p">,</span>
+    <span class="n">decision</span><span class="o">=</span><span class="s2">&quot;复用一个 Postgres 实例 + pgvector 扩展，检索与业务数据同库。&quot;</span><span class="p">,</span>
+    <span class="n">alternatives</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Chroma（无法持久化与复杂过滤）&quot;</span><span class="p">,</span> <span class="s2">&quot;Milvus（功能强但运维重，规模用不上）&quot;</span><span class="p">],</span>
+    <span class="n">consequences</span><span class="o">=</span><span class="s2">&quot;单机性能上限较低；若 chunk 数破百万需迁移。换来的是零额外运维。&quot;</span><span class="p">,</span>
+    <span class="n">revisit_when</span><span class="o">=</span><span class="s2">&quot;文档量级超过 50 万 chunk，或 P95 检索延迟 &gt; 200ms。&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">render</span><span class="p">(</span><span class="n">adr</span><span class="p">:</span> <span class="n">ADR</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# ADR-</span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">title</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;## 背景</span><span class="se">\n</span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">context</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">## 决策</span><span class="se">\n</span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">decision</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;## 备选方案</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- </span><span class="si">{</span><span class="n">a</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">adr</span><span class="o">.</span><span class="n">alternatives</span><span class="p">)</span> <span class="o">+</span>
+            <span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">## 代价</span><span class="se">\n</span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">consequences</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">## 何时重新评估</span><span class="se">\n</span><span class="si">{</span><span class="n">adr</span><span class="o">.</span><span class="n">revisit_when</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">render</span><span class="p">(</span><span class="n">adr_vectorstore</span><span class="p">))</span>  <span class="c1"># 输出可直接存为 docs/adr/0001-vectorstore.md</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://adr.github.io/">Architecture Decision Records (ADR)</a> — ADR 模板与最佳实践合集。</li>
+<li><a href="https://github.com/pgvector/pgvector">pgvector</a> — 在 Postgres 里做向量检索，中小项目性价比之选。</li>
+<li><a href="https://docs.trychroma.com/">Chroma</a> / <a href="https://faiss.ai/">FAISS</a> — 原型期最轻量的向量检索方案。</li>
+<li><a href="https://www.pinecone.io/learn/langchain/">LangChain vs LlamaIndex vs 自研</a> — 帮助判断是否需要 Agent 框架的讨论。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>为你的 Capstone 写至少 3 篇 ADR：模型选型、向量库选型、是否使用编排框架。每篇都必须包含"备选方案"和"何时重新评估"两节。验收标准：把任意一篇 ADR 给同行看，他能理解你的权衡逻辑，且无法简单地用"换成 X 不就行了"来反驳你——因为你已经把 X 列在备选里并说明了放弃理由。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 4 节：项目工程化——让代码配得上&quot;作品集&quot;三个字</h2>
+<p>第 4 节：项目工程化——让代码配得上"作品集"三个字</p>
+<aside class="notes">讲解「第 4 节：项目工程化——让代码配得上&quot;作品集&quot;三个字」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>Demo 代码和作品集代码的差距，往往比功能本身更能暴露你的工程水平。面试官 clone 下你的 repo，30 秒内就能从目录结构、README、配置管理判断你是不是一个靠谱的工程师。Capstone 必须<strong>当成一个真正的软件项目来工程化</strong>，至少做到四点：</p>
+<ul>
+<li><strong>清晰的代码结构</strong>：按职责分层（数据/检索/生成/服务/评估），而不是一个 2000 行的 <code>main.py</code>。目录结构本身就是架构的表达。</li>
+<li><strong>配置与密钥管理</strong>：所有可变项（模型名、阈值、API 地址）走配置文件 + 环境变量，<strong>密钥绝不进 Git</strong>（用 <code>.env</code> + <code>.gitignore</code> + <code>.env.example</code>）。这是 12-Factor 原则，也是 stage-08 的延续。</li>
+<li><strong>测试</strong>：LLM 输出不能精确断言，但<strong>确定性逻辑必须有单测</strong>（数据清洗、分块、护栏、解析），核心链路要有评估集回归。有测试的 repo 立刻显得专业。</li>
+<li><strong>一份杀手级 README</strong>：这是你作品集的门面。要有：一句话价值主张、架构图、quickstart（让人 5 分钟跑起来）、技术选型说明（链接到 ADR）、效果演示（截图/GIF/在线 demo）、已知局限与未来计划。</li>
+</ul>
+<p>为什么工程化值得你花时间？因为<strong>作品集项目的受众是"未来的雇主"，不是"现在的你"</strong>。一个功能普通但工程规范、文档清晰、一键可跑的项目，给人的信任感远超一个功能炫酷但 clone 下来跑不起来、README 只有一行的项目。<strong>可复现性，是专业度的第一信号</strong>。</p>
+<blockquote>
+<p><strong>专家心法</strong>：写完代码后，找一台干净的机器（或新建虚拟环境），严格按自己的 README 从零跑一遍。90% 的人会在这一步发现"原来我有三个没写进文档的隐藏步骤"。能让陌生人一次跑通的项目，已经赢过了大多数候选人。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>一个清晰、可直接套用的端到端项目目录骨架与配置管理实现。</p>
+<div class="codehilite"><pre><span></span><code>capstone-arxiv-assistant/
+├── README.md                  # 作品集门面：价值/架构图/quickstart/demo/局限
+├── pyproject.toml             # 依赖与项目元数据
+├── .env.example               # 列出需要的环境变量（不含真实值），.env 进 gitignore
+├── Dockerfile                 # stage-08 的容器化
+├── docs/
+│   └── adr/                   # 架构决策记录（第 3 节产物）
+├── src/
+│   ├── config.py              # 集中配置：Pydantic Settings 读环境变量
+│   ├── ingest/                # 数据上游：解析、清洗、分块、写入向量库
+│   ├── retrieval/             # 检索层：embedding + 向量检索 + rerank
+│   ├── generation/            # 生成/编排层：Prompt、RAG、Agent 循环
+│   ├── guardrails/            # 护栏（stage-08）
+│   ├── observability/         # Langfuse 埋点（stage-08）
+│   └── api/                   # FastAPI 服务（stage-08）
+├── eval/
+│   ├── dataset.jsonl          # 评估集（stage-07）
+│   └── run_eval.py            # 评估脚本，被 CI 当门禁调用
+└── tests/                     # 确定性逻辑的单元测试
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># src/config.py —— 用 Pydantic Settings 集中管理配置，类型安全、从环境变量读取</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic_settings</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseSettings</span><span class="p">,</span> <span class="n">SettingsConfigDict</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Settings</span><span class="p">(</span><span class="n">BaseSettings</span><span class="p">):</span>
+    <span class="c1"># 从 .env 读取；密钥永远不写进代码，.env 不进 Git</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">SettingsConfigDict</span><span class="p">(</span><span class="n">env_file</span><span class="o">=</span><span class="s2">&quot;.env&quot;</span><span class="p">,</span> <span class="n">env_file_encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+
+    <span class="n">openai_api_key</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">chat_model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;gpt-4o-mini&quot;</span>           <span class="c1"># 可调项给默认值，便于切换</span>
+    <span class="n">embedding_model</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;text-embedding-3-small&quot;</span>
+    <span class="n">top_k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span>                            <span class="c1"># 检索返回数，调参入口</span>
+    <span class="n">cache_sim_threshold</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.92</span>         <span class="c1"># 语义缓存阈值（stage-08）</span>
+    <span class="n">eval_min_score</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.8</span>               <span class="c1"># CI 评估门禁阈值（stage-07）</span>
+    <span class="n">langfuse_host</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;https://cloud.langfuse.com&quot;</span>
+
+<span class="c1"># 全局唯一配置实例，到处 import 它，杜绝散落各处的硬编码</span>
+<span class="n">settings</span> <span class="o">=</span> <span class="n">Settings</span><span class="p">()</span>  <span class="c1"># 启动即校验：缺 key 会立刻报错，而不是运行到一半才崩</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://docs.pydantic.dev/latest/concepts/pydantic_settings/">Pydantic Settings 文档</a> — 类型安全的配置与密钥管理事实标准。</li>
+<li><a href="https://www.makeareadme.com/">Make a README</a> — 优秀 README 的结构模板。</li>
+<li><a href="https://goodresearch.dev/">The Good Research Code Handbook</a> — 如何把研究/原型代码组织成可维护项目，干货极多。</li>
+<li><a href="https://docs.pytest.org/">pytest 官方文档</a> — Python 测试事实标准。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>按上面的骨架重构你的 Capstone 代码：分层目录、<code>config.py</code> 集中配置、<code>.env.example</code>、至少为护栏和数据分块写单元测试、写一份完整 README。然后做"干净机器测试"：新建虚拟环境，严格照自己 README 跑一遍。验收标准：陌生人能在 5 分钟内按 README 把项目跑起来；repo 里搜不到任何明文密钥；<code>pytest</code> 能跑过。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 5 节：讲好你的项目——写进简历、作品集与面试</h2>
+<p>第 5 节：讲好你的项目——写进简历、作品集与面试</p>
+<aside class="notes">讲解「第 5 节：讲好你的项目——写进简历、作品集与面试」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>做完项目只是完成了一半，<strong>能把它讲清楚、让别人意识到它的价值，才是 Capstone 的最终交付</strong>。技术再扎实，讲不出来，在求职市场上约等于没做。这一节是把工程成果转化为职业资本的关键。</p>
+<p><strong>写进简历</strong>：一条好的 AI 项目经历遵循 <strong>STAR + 量化</strong> 原则。不要写"做了一个 RAG 问答系统"（人人都能写），要写："为 X 场景构建端到端 RAG 助手，通过混合检索 + rerank 将答案忠实度从 72% 提升至 91%（基于 50 题评估集），接入 Langfuse 监控并用语义缓存降低 40% 推理成本，FastAPI + Docker 部署"。<strong>每一句都带技术决策和量化结果</strong>——评估数据、成本数据、延迟数据，这些数字是你和"只会套壳"的人之间的护城河。</p>
+<p><strong>作品集呈现</strong>：一个可访问的在线 demo（或一段 2 分钟演示视频）+ 规范的 GitHub repo + 一篇技术博客（讲清你踩了什么坑、做了什么权衡）。博客尤其加分，它证明你不仅会做，还能反思和表达。</p>
+<p><strong>面试讲项目</strong>：准备一个<strong>分层叙事</strong>——30 秒电梯版（解决什么问题、效果如何）、3 分钟架构版（数据流 + 关键技术决策）、深挖版（针对每一环都能回答"为什么这么做、遇到什么坑、怎么解决、还能怎么优化"）。面试官最爱问的是<strong>权衡和失败</strong>："你遇到的最大挑战是什么？""如果重做你会改什么？""为什么不用 Agent？" 这些问题考的不是你做对了什么，而是你<strong>理解多深</strong>。</p>
+<blockquote>
+<p><strong>专家心法</strong>：面试讲项目，要主动暴露你思考过的"取舍"和"做得还不够好的地方"，而不是把项目吹得完美无缺。说"我用了朴素 RAG，因为评估显示加 Agent 收益不明显且会翻倍成本"，比说"我用了最先进的多 Agent 架构"更能打动资深面试官——前者证明你有判断力，后者可能只是在堆砌名词。<strong>真诚的取舍 &gt; 虚假的完美</strong>。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>把你的评估结果固化成一份"项目效果报告"，它同时服务于简历量化、README 展示和面试举证——一份产出，三处复用。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># report.py —— 生成项目效果报告，把工程成果翻译成&quot;可写进简历的数字&quot;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">asdict</span>
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ProjectMetrics</span><span class="p">:</span>
+    <span class="n">eval_set_size</span><span class="p">:</span> <span class="nb">int</span>            <span class="c1"># 评估集规模，证明数字不是拍脑袋</span>
+    <span class="n">faithfulness_before</span><span class="p">:</span> <span class="nb">float</span>    <span class="c1"># 优化前忠实度（朴素 RAG 基线）</span>
+    <span class="n">faithfulness_after</span><span class="p">:</span> <span class="nb">float</span>     <span class="c1"># 优化后（加了 rerank / 改了 Prompt）</span>
+    <span class="n">cost_per_query_before</span><span class="p">:</span> <span class="nb">float</span>  <span class="c1"># 优化前单次成本（美元）</span>
+    <span class="n">cost_per_query_after</span><span class="p">:</span> <span class="nb">float</span>   <span class="c1"># 接入语义缓存/模型路由后</span>
+    <span class="n">p95_latency_ms</span><span class="p">:</span> <span class="nb">int</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">resume_bullets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+        <span class="c1"># 把指标直接转成简历可用的量化句子</span>
+        <span class="n">faith_gain</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">faithfulness_after</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">faithfulness_before</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="n">cost_cut</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_per_query_after</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">cost_per_query_before</span><span class="p">)</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="k">return</span> <span class="p">[</span>
+            <span class="sa">f</span><span class="s2">&quot;基于 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">eval_set_size</span><span class="si">}</span><span class="s2"> 题评估集，将答案忠实度提升 </span><span class="si">{</span><span class="n">faith_gain</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2"> 个百分点&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;（</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">faithfulness_before</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">→</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">faithfulness_after</span><span class="si">:</span><span class="s2">.0%</span><span class="si">}</span><span class="s2">）&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;通过语义缓存与模型路由降低单次推理成本 </span><span class="si">{</span><span class="n">cost_cut</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">%&quot;</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">&quot;端到端 P95 延迟控制在 </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">p95_latency_ms</span><span class="si">}</span><span class="s2">ms，FastAPI + Docker 部署并接入 Langfuse 监控&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">m</span> <span class="o">=</span> <span class="n">ProjectMetrics</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mf">0.72</span><span class="p">,</span> <span class="mf">0.91</span><span class="p">,</span> <span class="mf">0.012</span><span class="p">,</span> <span class="mf">0.0072</span><span class="p">,</span> <span class="mi">1800</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">asdict</span><span class="p">(</span><span class="n">m</span><span class="p">),</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">))</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- 简历可用句子 ---&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">m</span><span class="o">.</span><span class="n">resume_bullets</span><span class="p">():</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;•&quot;</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://www.coursera.org/articles/software-engineer-resume">Coursera: How to Write a Software Engineer Resume</a> — 工程简历的量化写法。</li>
+<li><a href="https://bytebytego.com/">System Design Interview (ByteByteGo)</a> — 讲清架构、应对深挖式追问的系统设计表达框架。</li>
+<li><a href="https://www.freecodecamp.org/news/how-to-build-a-developer-portfolio/">How to Build a Portfolio Project (freeCodeCamp)</a> — 作品集呈现的实操指南。</li>
+<li><a href="https://jvns.ca/blog/2017/03/20/blogging-principles/">Writing technical blog posts (Julia Evans)</a> — 如何把项目写成有说服力的技术博客。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>为你的 Capstone 产出三样东西：(1) 简历上的 2~3 条量化项目经历（每条都含技术决策 + 数字）；(2) 一份面试用的"分层叙事"提纲（30 秒 / 3 分钟 / 深挖三档）；(3) 一篇至少讲清"一个关键权衡 + 一个踩过的坑"的技术博客草稿。验收标准：找一位朋友扮演面试官，用你的提纲讲一遍，并接住"为什么这么选""最大挑战是什么"两个追问。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section>
+<h2 class="chap-title">🎯 阶段实战项目：Capstone 端到端 AI 产品（毕业作品）</h2>
+<p>🎯 阶段实战项目：Capstone 端到端 AI 产品（毕业作品）</p>
+<p>这就是本课程的最终交付物。它不是又一个练习，而是你求职作品集的核心、你 AI Engineer 能力的总检验。</p>
+<p><strong>目标</strong>：独立完成一个<strong>打通 stage-01~08 全链路</strong>的真实 AI 产品——从数据上游，经 RAG/Agent 推理，到评估、部署、监控，形成可演进的闭环。</p>
+<p><strong>候选方向（三选一，或自拟同等深度的题目）</strong>：</p>
+<ol>
+<li><strong>个人知识库 / arXiv 论文助手</strong></li>
+<li>价值：让用户对自己的文献/笔记/收藏做语义问答与摘要追问。</li>
+<li>链路重点：PDF/网页解析与分块（数据上游）→ 混合检索 + rerank（RAG）→ 带溯源的问答（生成）→ 忠实度评估 → 部署监控。</li>
+<li>
+<p>难点与亮点：分块策略对长文档的影响、答案溯源、"检索不到时诚实说不知道"。</p>
+</li>
+<li>
+<p><strong>企业/团队制度文档智能客服</strong></p>
+</li>
+<li>价值：员工自然语言查询 HR/IT/报销等制度，替代翻文档与问人。</li>
+<li>链路重点：多文档管理与元数据过滤（按部门/时效）→ 检索 → 受控生成（绝不编造政策）→ 护栏（拒答越权问题）→ 监控高频问题。</li>
+<li>
+<p>难点与亮点：幻觉控制（答错政策代价高）、权限与边界、用监控数据发现文档盲区。</p>
+</li>
+<li>
+<p><strong>多步任务 Agent（如"调研助手"）</strong></p>
+</li>
+<li>价值：给定一个调研主题，自动检索、筛选、综合、产出结构化报告。</li>
+<li>链路重点：工具调用（搜索/抓取）→ 多步规划与反思（Agent 编排）→ 结果综合 → 评估报告质量 → 护栏（成本/循环熔断）→ 监控每步轨迹。</li>
+<li>难点与亮点：Agent 循环的可控性与成本熔断、中间步骤的可观测、何时该停。</li>
+</ol>
+<p><strong>硬性要求（缺一不可，对应六个环节）</strong>：</p>
+<ol>
+<li><strong>数据上游</strong>：有真实数据源，完成解析、清洗、分块、入向量库，并说明分块策略的选择理由。</li>
+<li><strong>RAG/Agent</strong>：实现核心检索/推理链路，答案可溯源；复杂度与问题匹配（用 ADR 说明为何用/不用 Agent）。</li>
+<li><strong>评估</strong>：建立 ≥30 题的离线评估集，定义并测量至少一个质量指标（如忠实度/正确率），给出基线 vs 优化后的对比数据。</li>
+<li><strong>部署</strong>：FastAPI 服务化（含流式）+ Docker 容器化，一键可跑。</li>
+<li><strong>监控与护栏</strong>：接入 Langfuse 全链路 trace + 成本统计；双向 Guardrails；至少一项降本措施（语义缓存或模型路由）并量化效果。</li>
+<li><strong>工程化与交付</strong>：分层代码结构、Pydantic 配置管理、<code>.env.example</code>、确定性逻辑单测、≥3 篇 ADR、一份杀手级 README、CI 含评估门禁。</li>
+</ol>
+<p><strong>验收标准</strong>：</p>
+<ul>
+<li><strong>可复现</strong>：陌生人按 README 在干净环境下 5~10 分钟内跑起来，repo 无明文密钥。</li>
+<li><strong>闭环完整</strong>：六个环节齐备，能现场演示"一个请求从入口到出口"的完整流转，并在 Langfuse 里回放其 trace。</li>
+<li><strong>数据说话</strong>：提供项目效果报告，含评估指标的基线/优化对比、降本百分比、P95 延迟。</li>
+<li><strong>讲得清楚</strong>：能用 30 秒 / 3 分钟 / 深挖三档叙事讲明项目，并接住"为什么这么选""最大挑战"的追问。</li>
+<li><strong>简历就绪</strong>：产出 2~3 条量化的项目经历句子。</li>
+</ul>
+<p><strong>可选进阶</strong>：</p>
+<ul>
+<li>部署一个公开可访问的在线 demo（Hugging Face Spaces / Railway / Fly.io 等），附二维码进简历。</li>
+<li>写一篇技术博客复盘关键权衡与踩坑。</li>
+<li>做一轮"上线就绪评审"：模拟上游故障、提示注入、预算超限三种场景，给出应对预案（呼应 stage-08）。</li>
+<li>用真实用户跑一周，收集 Langfuse 中的"踩"反馈，构建第二版评估集并迭代——完成"监控反馈回流改进"的真正闭环。</li>
+</ul>
+<aside class="notes">讲解「🎯 阶段实战项目：Capstone 端到端 AI 产品（毕业作品）」。按 ↓ 进入细节。</aside>
+</section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+<script>
+Reveal.initialize({hash:true,slideNumber:'c/t',transition:'slide',
+  plugins:[RevealHighlight,RevealNotes]});
+</script></body></html>
