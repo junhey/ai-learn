@@ -1,0 +1,532 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型微调 · Fine-tuning · 授课</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/black.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+<style>
+.reveal{font-family:-apple-system,"PingFang SC",sans-serif}
+.reveal h1,.reveal h2,.reveal h3{text-transform:none;letter-spacing:-.5px;color:#e6e9ef}
+.cover-h1{font-size:2.0em;background:linear-gradient(90deg,#fff,#5b8cff,#8b5cf6);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.cover-goal{color:#9aa3b2;font-size:.7em}
+.chap-title{font-size:1.5em;color:#5b8cff}
+.sub-title{font-size:1.0em;color:#22d3ee;border-bottom:2px solid #2a2f3a;padding-bottom:10px}
+.slide-body{font-size:.62em;line-height:1.55;text-align:left}
+.reveal pre{width:100%;font-size:.5em;box-shadow:none;border:1px solid #2a2f3a;border-radius:10px}
+.reveal pre code{max-height:520px;padding:14px}
+.reveal table{font-size:.55em}
+.reveal ul,.reveal ol{font-size:.95em}
+.reveal a{color:#5b8cff}
+.reveal blockquote{font-size:.6em;background:rgba(251,191,36,.08);border-left:3px solid #fbbf24;width:100%}
+.lv-badge{display:inline-block;font-size:.4em;padding:6px 16px;border-radius:30px;color:#0f1115;font-weight:700;margin-bottom:20px}
+.lv-基础{background:#34d399}.lv-进阶{background:#5b8cff}.lv-高级{background:#8b5cf6}.lv-部署{background:#22d3ee}.lv-综合{background:#f472b6}
+.reveal .slide-body :not(pre)>code{background:#1d212b;color:#ffd9a8;padding:1px 6px;border-radius:5px;font-size:.85em}
+.topbar{position:fixed;top:12px;left:16px;z-index:30;font-size:13px;color:#6b7280}
+.topbar a{color:#5b8cff;text-decoration:none}
+</style></head><body>
+<div class="topbar"><a href="index.html">← 全部课程</a> · 按 <b>S</b> 看演讲备注 · <b>F</b> 全屏 · <b>ESC</b> 总览</div>
+<div class="reveal"><div class="slides">
+<section data-background-gradient="linear-gradient(135deg,#171a21,#1d212b)">
+<div class="lv-badge lv-高级">高级 · 阶段 5</div>
+<h1 class="cover-h1">模型微调 · Fine-tuning</h1>
+<p class="cover-goal">搞清楚「何时该微调、何时不该」，吃透 LoRA/QLoRA 的省显存原理，能用 PEFT + TRL 在消费级显卡上完成一次 SFT 并合并部署</p>
+<aside class="notes">本阶段目标: 搞清楚「何时该微调、何时不该」，吃透 LoRA/QLoRA 的省显存原理，能用 PEFT + TRL 在消费级显卡上完成一次 SFT 并合并部署。前置要求: 完成 stage-01~04（Prompt、RAG、Agent），理解 Transformer 基本结构，有一张 ≥16GB 显存的 GPU（或用 Colab/云）。</aside>
+</section>
+<section><section>
+<h2 class="chap-title">第 1 节：何时该微调——微调不是第一选择，而是最后手段</h2>
+<p>第 1 节：何时该微调——微调不是第一选择，而是最后手段</p>
+<aside class="notes">讲解「第 1 节：何时该微调——微调不是第一选择，而是最后手段」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>新手最常犯的错，是把微调当成「让模型变好」的万能钥匙，一上来就想训模型。<strong>资深工程师的第一反应恰恰相反：先穷尽 Prompt 和 RAG，确认它们不够用了，才考虑微调。</strong> 因为微调成本高（算力、数据、时间、维护），且会引入新问题（灾难性遗忘、过拟合、部署复杂度）。</p>
+<p>先厘清三者各自解决什么问题，这是本阶段最重要的认知：</p>
+<ul>
+<li><strong>Prompt 工程</strong>：改变模型的<strong>行为/输出格式</strong>。零成本、秒级迭代。能用 Prompt 解决的，永远优先。</li>
+<li><strong>RAG（检索增强）</strong>：给模型补充<strong>它不知道的、动态变化的知识</strong>（私有文档、实时数据）。知识是「外挂」进上下文的，模型参数不变。<strong>「让模型知道新事实」是 RAG 的活，不是微调的活</strong>——这是最高频的概念混淆。</li>
+<li><strong>Fine-tuning（微调）</strong>：改变模型的<strong>内在能力、风格、领域适应性</strong>。它教的是「怎么做」（一种技能、一种语气、一种格式遵循），而不是「记住什么事实」。</li>
+</ul>
+<p><strong>什么时候微调才是对的选择？</strong></p>
+<ol>
+<li><strong>稳定的风格/格式/语气</strong>：要模型始终用某种特定口吻、严格遵循某种私有输出格式，Prompt 里塞一堆示例又长又不稳——微调能把它「内化」。</li>
+<li><strong>特定领域的能力提升</strong>：法律、医疗、代码等专业领域，需要模型掌握领域术语和推理范式。</li>
+<li><strong>用小模型替代大模型降本</strong>：把 GPT-4o 的能力「蒸馏」到一个微调过的小模型上，推理成本可能降一两个数量级。这是工业界微调最常见的动机。</li>
+<li><strong>Prompt 太长导致成本/延迟不可接受</strong>：当你需要 10 个 few-shot 示例才能稳定，不如微调把这些「编译」进权重，换来短 Prompt。</li>
+<li><strong>降低延迟、可私有化部署</strong>：微调小模型可本地部署，数据不出域。</li>
+</ol>
+<p><strong>什么时候不该微调：</strong> 需要补充事实知识（用 RAG）、需求频繁变化（微调迭代慢）、数据量太少（几十条不如写好 Prompt）、只是输出格式问题（用 Structured Outputs）。</p>
+<blockquote>
+<p><strong>专家心法</strong>：记住这个决策顺序——<strong>Prompt → Few-shot → RAG → Fine-tuning</strong>，从左到右成本递增、迭代变慢。把微调放在最后。还有一句反直觉的真相：<strong>微调改变的是「形」（风格、格式、技能），RAG 改变的是「实」（知识、事实）</strong>。想让模型「说话像客服」用微调，想让模型「知道今天的退货政策」用 RAG。两者常常组合使用：微调出风格 + RAG 注入知识。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>这一节是决策框架，给一段「自检脚本」帮你在动手训练前理清思路（而非具体训练代码）。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 一个微调决策自检清单（伪决策树，跑起来逼自己回答关键问题）</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">should_finetune</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ask</span><span class="p">(</span><span class="n">q</span><span class="p">):</span> <span class="k">return</span> <span class="nb">input</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s2"> (y/n): &quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;y&quot;</span>
+
+    <span class="k">if</span> <span class="n">ask</span><span class="p">(</span><span class="s2">&quot;你的核心需求是『让模型知道新的事实/私有知识』吗&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;❌ 用 RAG，不是微调。微调不擅长记事实，且知识一变就得重训。&quot;</span>
+
+    <span class="k">if</span> <span class="n">ask</span><span class="p">(</span><span class="s2">&quot;你已经认真试过 Prompt 工程 + Few-shot 了吗&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ask</span><span class="p">(</span><span class="s2">&quot;即便如此，输出风格/格式/质量仍不稳定吗&quot;</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s2">&quot;❌ 先把 Prompt 调好。微调成本远高于改 Prompt。&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;❌ 先做 Prompt 工程。这是免费且最快的手段。&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">ask</span><span class="p">(</span><span class="s2">&quot;你有 ≥ 几百条高质量、风格一致的标注样本吗&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;⚠️ 数据不足。先攒数据，或用更大模型生成蒸馏数据。&quot;</span>
+
+    <span class="k">if</span> <span class="n">ask</span><span class="p">(</span><span class="s2">&quot;需求是否稳定（未来几周不会大改）&quot;</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;✅ 适合微调：用 LoRA/QLoRA 做 SFT，成本可控。&quot;</span>
+    <span class="k">return</span> <span class="s2">&quot;⚠️ 需求多变时微调迭代慢，谨慎评估。&quot;</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">should_finetune</span><span class="p">())</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://platform.openai.com/docs/guides/fine-tuning#when-to-use-fine-tuning">OpenAI: When to fine-tune</a> — 官方对「微调 vs Prompt」的判断标准。</li>
+<li><a href="https://www.anyscale.com/blog/fine-tuning-and-retrieval-augmented-generation-rag-the-right-tool-for-the-job">Anyscale: Fine-tuning vs RAG</a> — 把两者的适用场景讲得很透。</li>
+<li><a href="https://huggingface.co/docs/transformers/training">Hugging Face: Fine-tuning 概述</a> — 微调的整体认知与生态入口。</li>
+<li><a href="https://a16z.com/emerging-architectures-for-llm-applications/">a16z: Emerging Architectures for LLM Applications</a> — 从架构视角看 RAG 与微调在系统中的位置。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>针对你自己的一个真实需求（或设想），写一份不超过一页的「微调必要性论证」：明确说明为什么 Prompt/RAG 不够、微调要解决什么、需要什么数据、预期收益与风险。验收标准：能用上面的决策顺序自圆其说，<strong>并且至少列出一个「换成 RAG 可能更好」的反方观点</strong>。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 2 节：SFT 监督微调——微调的主力范式</h2>
+<p>第 2 节：SFT 监督微调——微调的主力范式</p>
+<aside class="notes">讲解「第 2 节：SFT 监督微调——微调的主力范式」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p><strong>SFT（Supervised Fine-Tuning，监督微调）</strong> 是当今微调的主力。它的思路朴素得和预训练一脉相承：<strong>给模型看大量「输入→期望输出」的配对样本，让它继续做「预测下一个 token」的训练，只不过现在的训练数据是你精心准备的、符合你需求的高质量样本。</strong> 模型通过梯度下降微调权重，逐渐学会在你的场景下「该怎么回答」。</p>
+<p><strong>和预训练的区别：</strong> 预训练是在无标注的海量文本上学「语言和世界的统计规律」；SFT 是在有标注的「指令-回答」对上学「如何遵循指令、按期望方式回应」。所以 SFT 也常叫 <strong>Instruction Tuning（指令微调）</strong>。</p>
+<p><strong>关键概念：</strong></p>
+<ul>
+<li><strong>数据格式即一切</strong>：SFT 的数据是「对话/指令」格式。现代做法是用模型的 <strong>chat template</strong>（聊天模板）把 <code>messages</code>（system/user/assistant）渲染成模型训练时见过的特殊标记格式。<strong>用错模板 = 训练信号错位</strong>，是新手最容易翻车的地方。</li>
+<li><strong>Loss masking（损失掩码）</strong>：训练时通常<strong>只对 assistant 的回答部分计算 loss</strong>，user 的提问部分不算（你要模型学「怎么答」，不是学「怎么问」）。TRL 的 <code>SFTTrainer</code> 可自动处理。</li>
+<li><strong>过拟合与 epoch</strong>：SFT 数据量通常不大，epoch 设太多（如 &gt;3）极易过拟合——模型死记硬背训练样本，泛化变差。一般 1~3 个 epoch。</li>
+<li><strong>学习率</strong>：LoRA 学习率通常高于全参 SFT（约 1e-4 ~ 3e-4），而全参 SFT 约 1e-5 ~ 2e-5。太大易训崩。</li>
+</ul>
+<p><strong>全参数微调 vs 参数高效微调（PEFT）：</strong> 全参数微调（更新所有权重）效果好但极吃显存——微调一个 7B 模型，光优化器状态就要几十 GB，消费级显卡根本扛不住。所以引出了下一节的主角：<strong>LoRA</strong>，只训练极少量参数就能逼近全量微调效果。<strong>本阶段及工业界主流都是 PEFT，全参数微调只在资源充足、追求极致时才用。</strong></p>
+<blockquote>
+<p><strong>专家心法</strong>：<strong>数据质量 &gt;&gt; 数据数量 &gt;&gt; 模型大小 &gt;&gt; 训练技巧</strong>。这个优先级是无数次踩坑换来的。500 条干净、风格统一、覆盖典型场景的高质量样本，胜过 5 万条嘈杂数据。微调失败十有八九是数据问题，不是超参问题。先把精力花在「造好数据」上，而不是反复调学习率。另外，<strong>务必留一个不参与训练的验证集</strong>，否则你根本不知道自己是在学习还是在背书。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>用 HuggingFace <code>datasets</code> 构造一个标准 SFT 数据集，并用 chat template 渲染——把「数据格式」这件事看清楚。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install datasets transformers</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoTokenizer</span>
+
+<span class="c1"># 1) SFT 数据的标准形态：每条是一个 messages 列表（多轮对话）</span>
+<span class="n">raw</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;你是简洁的客服助手。&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;怎么申请退款？&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;进入「我的订单」→选择订单→点「申请退款」，3 个工作日内到账。&quot;</span><span class="p">},</span>
+    <span class="p">]},</span>
+    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;你是简洁的客服助手。&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;可以改收货地址吗？&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;未发货可在订单页直接修改；已发货请联系快递改派。&quot;</span><span class="p">},</span>
+    <span class="p">]},</span>
+<span class="p">]</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+
+<span class="c1"># 2) 用模型自带的 chat_template 渲染——这一步决定训练信号是否对齐</span>
+<span class="n">tok</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="s2">&quot;Qwen/Qwen2.5-0.5B-Instruct&quot;</span><span class="p">)</span>
+<span class="n">example</span> <span class="o">=</span> <span class="n">tok</span><span class="o">.</span><span class="n">apply_chat_template</span><span class="p">(</span>
+    <span class="n">dataset</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;messages&quot;</span><span class="p">],</span>
+    <span class="n">tokenize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>                 <span class="c1"># 先看渲染成什么样的字符串</span>
+    <span class="n">add_generation_prompt</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;=== 渲染后的训练文本 ===&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">example</span><span class="p">)</span>   <span class="c1"># 你会看到 &lt;|im_start|&gt;system ... &lt;|im_end|&gt; 这类特殊标记</span>
+
+<span class="c1"># 3) 划分训练/验证集（务必留验证集！）</span>
+<span class="n">splits</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;train:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">splits</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">]),</span> <span class="s2">&quot; eval:&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">splits</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">]))</span>
+</code></pre></div>
+
+<p>运行后观察那串带 <code>&lt;|im_start|&gt;</code>/<code>&lt;|im_end|&gt;</code> 的文本——<strong>这就是模型实际「吃」进去的格式</strong>。换个模型（如 Llama）模板完全不同，用错就训废。</p></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://huggingface.co/docs/trl/sft_trainer">TRL: Supervised Fine-tuning Trainer</a> — <code>SFTTrainer</code> 官方文档，SFT 的事实标准工具。</li>
+<li><a href="https://huggingface.co/docs/transformers/chat_templating">HuggingFace: Chat Templates</a> — 讲清为什么模板如此关键，必读。</li>
+<li><a href="https://magazine.sebastianraschka.com/p/finetuning-large-language-models">Sebastian Raschka: Finetuning LLMs</a> — 对 SFT 流程和取舍的深度长文。</li>
+<li><a href="https://github.com/tatsu-lab/stanford_alpaca#data-release">Alpaca 数据集</a> — 经典指令微调数据集，学习指令格式的范本。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>收集（或自造）20 条「同一风格」的指令-回答样本（如「全部用文言文回答」），分别用 Qwen 和 Llama 的 tokenizer 渲染同一条数据，对比两者 chat template 的差异。验收标准：能指出两个模型特殊标记的不同，并解释「为什么训练时必须用模型自己的模板」。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 3 节：LoRA / QLoRA——为什么能在消费级显卡上微调大模型</h2>
+<p>第 3 节：LoRA / QLoRA——为什么能在消费级显卡上微调大模型</p>
+<aside class="notes">讲解「第 3 节：LoRA / QLoRA——为什么能在消费级显卡上微调大模型」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>这是本阶段技术含量最高、也最该吃透的一节。<strong>LoRA（Low-Rank Adaptation，低秩适配）</strong> 是让微调从「土豪专属」变成「人人可玩」的关键突破。</p>
+<p><strong>先理解痛点：</strong> 全参数微调一个 7B 模型，你要在显存里同时放：fp32 主权重（~28GB）+ 梯度 + Adam 优化器状态（动量 m + 方差 v，fp32 ≈ 56GB），合计通常 100GB+，单张消费级卡（24GB）连零头都放不下。</p>
+<p><strong>LoRA 的核心洞察：</strong> 研究发现，<strong>微调时权重的「变化量」ΔW 其实是低秩的</strong>——也就是说，模型适应新任务所需的有效改变，可以用两个很小的矩阵相乘来近似。于是 LoRA 做了一件聪明事：</p>
+<ul>
+<li><strong>冻结原始权重 W</strong>（完全不动，不需要存它的梯度和优化器状态）。</li>
+<li>在旁边并联一个「低秩旁路」：<code>ΔW = B × A</code>，其中 <code>A</code> 是 <code>r×d</code>、<code>B</code> 是 <code>d×r</code>，<code>r</code>（秩）极小（如 8、16、64）。</li>
+<li>前向时输出变成 <code>h = Wx + BAx</code>。<strong>只训练 A 和 B 这两个小矩阵</strong>。</li>
+</ul>
+<p><strong>为什么省显存（Why）：</strong> 假设 <code>d=4096</code>，全量要训 <code>4096×4096≈1678 万</code>个参数，而 LoRA（r=8）只训 <code>2×4096×8≈6.5 万</code>个——<strong>可训练参数减少约 99%+</strong>。梯度和优化器状态只需为这极少量参数维护，显存需求断崖式下降。而且原始权重冻结，天然缓解灾难性遗忘。</p>
+<p><strong>QLoRA = Quantization + LoRA</strong>，更狠的省显存术，三个关键技术：</p>
+<ol>
+<li><strong>4-bit NF4 量化</strong>：把冻结的基座模型权重压成 4-bit（NormalFloat4，一种为正态分布权重优化的数据类型）存储，显存再降约 4 倍。计算时临时反量化成 bf16。</li>
+<li><strong>Double Quantization（双重量化）</strong>：连量化用的常数也量化，再省一点。</li>
+<li><strong>Paged Optimizers</strong>：用 NVIDIA 统一内存处理显存峰值，防 OOM。</li>
+</ol>
+<p><strong>效果：</strong> QLoRA 大幅拉低了微调的显存门槛——<strong>24GB 级显卡可微调约 30B 级模型；65B/70B 需 48GB 级单卡</strong>（QLoRA 原论文的标志性结论是单张 48GB 微调 65B），而性能几乎不输全参数微调。这是 2023 年最有影响力的工程突破之一。</p>
+<p><strong>关键超参：</strong></p>
+<ul>
+<li><strong><code>r</code>（秩）</strong>：旁路的「容量」。越大能学的越多，也越占资源、越易过拟合。常用 8~64，多数任务 16 够用。</li>
+<li><strong><code>lora_alpha</code></strong>：缩放因子，实际缩放 = <code>alpha/r</code>。经验上常设 <code>alpha = 2r</code>。</li>
+<li><strong><code>target_modules</code></strong>：给哪些层加 LoRA。通常加在注意力的 <code>q_proj/k_proj/v_proj/o_proj</code>，要更强可加上 MLP 层。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：别被 <code>r</code> 越大越好的直觉骗了——<strong>对多数任务，r=16 和 r=64 效果差别很小，但后者更易过拟合、更慢</strong>。先用小 <code>r</code> 跑通，不够再加。还有个高频疑问：<strong>LoRA 会损失精度吗？</strong> 在绝大多数下游任务上，LoRA/QLoRA 与全参微调的差距小到可忽略；只有在需要大幅改变模型底层能力（如教全新语言）时，PEFT 才可能不如全量。99% 的业务场景，QLoRA 就是性价比之王。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>用 <code>peft</code> 给模型加 LoRA、用 <code>bitsandbytes</code> 做 4-bit 量化（QLoRA），并打印「可训练参数占比」直观感受省了多少。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install transformers peft bitsandbytes accelerate</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForCausalLM</span><span class="p">,</span> <span class="n">BitsAndBytesConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoraConfig</span><span class="p">,</span> <span class="n">get_peft_model</span><span class="p">,</span> <span class="n">prepare_model_for_kbit_training</span>
+
+<span class="n">model_id</span> <span class="o">=</span> <span class="s2">&quot;Qwen/Qwen2.5-0.5B-Instruct&quot;</span>   <span class="c1"># 小模型便于本地跑通；逻辑对大模型完全一致</span>
+
+<span class="c1"># 1) QLoRA：4-bit NF4 量化配置，把基座权重压到 4-bit 加载</span>
+<span class="n">bnb_config</span> <span class="o">=</span> <span class="n">BitsAndBytesConfig</span><span class="p">(</span>
+    <span class="n">load_in_4bit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">bnb_4bit_quant_type</span><span class="o">=</span><span class="s2">&quot;nf4&quot;</span><span class="p">,</span>            <span class="c1"># NormalFloat4，专为正态权重设计</span>
+    <span class="n">bnb_4bit_compute_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span><span class="c1"># 计算时反量化成 bf16</span>
+    <span class="n">bnb_4bit_use_double_quant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>       <span class="c1"># 双重量化，再省一点显存</span>
+<span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span>
+    <span class="n">model_id</span><span class="p">,</span> <span class="n">quantization_config</span><span class="o">=</span><span class="n">bnb_config</span><span class="p">,</span> <span class="n">device_map</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">prepare_model_for_kbit_training</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>  <span class="c1"># 量化训练的必要预处理</span>
+
+<span class="c1"># 2) LoRA 配置：只在注意力投影层加低秩旁路</span>
+<span class="n">lora_config</span> <span class="o">=</span> <span class="n">LoraConfig</span><span class="p">(</span>
+    <span class="n">r</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span>                                  <span class="c1"># 秩：旁路容量</span>
+    <span class="n">lora_alpha</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span>                         <span class="c1"># 缩放，约定俗成 = 2*r</span>
+    <span class="n">target_modules</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;q_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;k_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;v_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;o_proj&quot;</span><span class="p">],</span>  <span class="c1"># 加在注意力层</span>
+    <span class="n">lora_dropout</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">bias</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+    <span class="n">task_type</span><span class="o">=</span><span class="s2">&quot;CAUSAL_LM&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">get_peft_model</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">lora_config</span><span class="p">)</span>
+
+<span class="c1"># 3) 直观看「省了多少」——可训练参数占比</span>
+<span class="n">model</span><span class="o">.</span><span class="n">print_trainable_parameters</span><span class="p">()</span>
+<span class="c1"># 典型输出: trainable params: 0.5M || all params: 494M || trainable%: ~0.1%</span>
+<span class="c1"># 意味着 99.9% 的参数被冻结，只训那 0.1%</span>
+</code></pre></div>
+
+<p><code>trainable%</code> 那一行就是 LoRA 的魔法所在——<strong>用 0.1% 的可训练参数，撬动整个模型的领域适应</strong>。</p></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2106.09685">LoRA 论文</a> — 低秩适配的原始论文，理解「ΔW 低秩」假设的来源。</li>
+<li><a href="https://arxiv.org/abs/2305.14314">QLoRA 论文</a> — NF4、双重量化、Paged Optimizer 的出处，工程细节丰富。</li>
+<li><a href="https://huggingface.co/docs/peft/index">HuggingFace PEFT 文档</a> — LoRA/QLoRA 等参数高效方法的官方库与指南。</li>
+<li><a href="https://huggingface.co/docs/bitsandbytes/main/en/index">bitsandbytes 文档</a> — 4-bit 量化的底层实现说明。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>用同一个模型，分别配置 <code>r=4</code>、<code>r=16</code>、<code>r=64</code>，调用 <code>print_trainable_parameters()</code> 记录三者的可训练参数量；再分别用 4-bit 量化 vs 不量化加载，用 <code>nvidia-smi</code> 记录显存占用。验收标准：用一张表说明「r 对参数量的影响」和「量化对显存的影响」，并解释 QLoRA 为什么能在小显存上跑大模型。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 4 节：完整 SFT + LoRA 训练流水线（PEFT + TRL）</h2>
+<p>第 4 节：完整 SFT + LoRA 训练流水线（PEFT + TRL）</p>
+<aside class="notes">讲解「第 4 节：完整 SFT + LoRA 训练流水线（PEFT + TRL）」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>前几节的零件——数据格式、chat template、LoRA、量化——现在用 <strong>TRL（Transformer Reinforcement Learning）库的 <code>SFTTrainer</code></strong> 串成一条完整流水线。TRL 是 HuggingFace 官方的对齐/微调库，<code>SFTTrainer</code> 把 SFT 的繁琐细节（模板渲染、loss masking、packing、与 PEFT 集成）都封装好了，是当下做 SFT 的标准工具。</p>
+<p><strong>一条标准 SFT 流水线的步骤：</strong></p>
+<ol>
+<li><strong>加载模型 + tokenizer</strong>（按需 4-bit 量化）。</li>
+<li><strong>准备数据集</strong>：整理成 <code>messages</code> 格式，<code>SFTTrainer</code> 会自动套 chat template。</li>
+<li><strong>配置 LoRA</strong>（<code>LoraConfig</code>）。</li>
+<li><strong>配置训练超参</strong>（<code>SFTConfig</code>：学习率、epoch、batch size、梯度累积等）。</li>
+<li><strong>训练</strong>：<code>trainer.train()</code>，全程监控 train/eval loss。</li>
+<li><strong>保存</strong>：只保存 LoRA adapter（几 MB ~ 几十 MB，而非整个模型）。</li>
+</ol>
+<p><strong>几个生产级要点：</strong></p>
+<ul>
+<li><strong>梯度累积（gradient accumulation）</strong>：显存装不下大 batch 时，用小 batch 多步累积梯度再更新，等效放大 batch size。</li>
+<li><strong>梯度检查点（gradient checkpointing）</strong>：用计算换显存，训练大模型几乎必开。</li>
+<li><strong>监控 eval loss</strong>：train loss 一直降但 eval loss 开始升 = 过拟合，该早停。</li>
+<li><strong><code>bf16</code></strong>：现代 GPU 上用 bf16 混合精度，比 fp16 数值更稳。</li>
+</ul>
+<p><strong>Unsloth——值得知道的加速利器：</strong> Unsloth 通过手写优化的 CUDA kernel，让 LoRA/QLoRA 微调<strong>速度提升约 2 倍、显存再省约 50%</strong>，API 与 HuggingFace 高度兼容。资源紧张时强烈推荐。<strong>LLaMA-Factory</strong> 则提供了「零代码 / WebUI / YAML 配置」的微调方案，覆盖 SFT/DPO/全量/LoRA，适合快速实验与不想写训练代码的场景。</p>
+<blockquote>
+<p><strong>专家心法</strong>：第一次跑训练，<strong>务必先用极小数据（如 10 条）、1 个 epoch 跑通整条流水线</strong>，确认能正常 train、save、load、推理，再上全量数据。无数人一上来就挂全量数据训几小时，结果发现模板用错/保存路径不对，白烧算力。另外，<strong>保存的是 adapter 不是全模型</strong>——这是 LoRA 的又一好处：一个基座可以挂多个不同任务的 adapter，几十 MB 一个，随时切换。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>一条端到端可运行的 SFT + QLoRA 训练脚本（小模型 + 小数据，本地可跑通）。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install &quot;trl&gt;=0.12&quot; &quot;transformers&gt;=4.46&quot; peft datasets bitsandbytes accelerate</span>
+<span class="c1"># 钉版本：SFTConfig / eval_strategy 等为较新 TRL/Transformers 命名，旧环境会踩签名错误</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForCausalLM</span><span class="p">,</span> <span class="n">AutoTokenizer</span><span class="p">,</span> <span class="n">BitsAndBytesConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">LoraConfig</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trl</span><span class="w"> </span><span class="kn">import</span> <span class="n">SFTTrainer</span><span class="p">,</span> <span class="n">SFTConfig</span>
+
+<span class="n">model_id</span> <span class="o">=</span> <span class="s2">&quot;Qwen/Qwen2.5-0.5B-Instruct&quot;</span>
+
+<span class="c1"># 1) 4-bit 量化加载（QLoRA）</span>
+<span class="n">bnb</span> <span class="o">=</span> <span class="n">BitsAndBytesConfig</span><span class="p">(</span>
+    <span class="n">load_in_4bit</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bnb_4bit_quant_type</span><span class="o">=</span><span class="s2">&quot;nf4&quot;</span><span class="p">,</span>
+    <span class="n">bnb_4bit_compute_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span> <span class="n">bnb_4bit_use_double_quant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_id</span><span class="p">,</span> <span class="n">quantization_config</span><span class="o">=</span><span class="n">bnb</span><span class="p">,</span> <span class="n">device_map</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+<span class="n">tokenizer</span> <span class="o">=</span> <span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">model_id</span><span class="p">)</span>
+
+<span class="c1"># 2) 构造一个「文言文风格」的小数据集（演示风格微调）</span>
+<span class="n">samples</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;今天天气怎么样？&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;今日天朗气清，惠风和畅，宜出游。&quot;</span><span class="p">},</span>
+    <span class="p">]},</span>
+    <span class="p">{</span><span class="s2">&quot;messages&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;帮我写句鼓励的话。&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;assistant&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;千里之行，始于足下；锲而不舍，金石可镂。&quot;</span><span class="p">},</span>
+    <span class="p">]},</span>
+<span class="p">]</span> <span class="o">*</span> <span class="mi">20</span>   <span class="c1"># 教学用，重复扩充；真实场景请用真数据</span>
+<span class="n">ds</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span><span class="o">.</span><span class="n">train_test_split</span><span class="p">(</span><span class="n">test_size</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">)</span>
+
+<span class="c1"># 3) LoRA 配置</span>
+<span class="n">peft_config</span> <span class="o">=</span> <span class="n">LoraConfig</span><span class="p">(</span>
+    <span class="n">r</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">lora_alpha</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">lora_dropout</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="s2">&quot;none&quot;</span><span class="p">,</span>
+    <span class="n">target_modules</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;q_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;k_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;v_proj&quot;</span><span class="p">,</span> <span class="s2">&quot;o_proj&quot;</span><span class="p">],</span>
+    <span class="n">task_type</span><span class="o">=</span><span class="s2">&quot;CAUSAL_LM&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># 4) 训练超参（SFTConfig 继承自 TrainingArguments）</span>
+<span class="n">args</span> <span class="o">=</span> <span class="n">SFTConfig</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;./wenyan-lora&quot;</span><span class="p">,</span>
+    <span class="n">num_train_epochs</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+    <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">gradient_accumulation_steps</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>     <span class="c1"># 等效 batch=8</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">2e-4</span><span class="p">,</span>                <span class="c1"># LoRA 常用量级</span>
+    <span class="n">bf16</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">logging_steps</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+    <span class="n">eval_strategy</span><span class="o">=</span><span class="s2">&quot;epoch&quot;</span><span class="p">,</span>             <span class="c1"># 每个 epoch 评估，监控过拟合</span>
+    <span class="n">save_strategy</span><span class="o">=</span><span class="s2">&quot;epoch&quot;</span><span class="p">,</span>
+    <span class="n">max_length</span><span class="o">=</span><span class="mi">512</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># 5) SFTTrainer 自动处理 chat template、loss masking、与 PEFT 集成</span>
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">SFTTrainer</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span>
+    <span class="n">train_dataset</span><span class="o">=</span><span class="n">ds</span><span class="p">[</span><span class="s2">&quot;train&quot;</span><span class="p">],</span>
+    <span class="n">eval_dataset</span><span class="o">=</span><span class="n">ds</span><span class="p">[</span><span class="s2">&quot;test&quot;</span><span class="p">],</span>
+    <span class="n">peft_config</span><span class="o">=</span><span class="n">peft_config</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">train</span><span class="p">()</span>
+
+<span class="c1"># 6) 只保存 LoRA adapter（很小）</span>
+<span class="n">trainer</span><span class="o">.</span><span class="n">save_model</span><span class="p">(</span><span class="s2">&quot;./wenyan-lora&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ 训练完成，adapter 已保存到 ./wenyan-lora&quot;</span><span class="p">)</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://huggingface.co/docs/trl/sft_trainer">TRL SFTTrainer 文档</a> — 本节代码的权威依据，含所有参数说明。</li>
+<li><a href="https://github.com/unslothai/unsloth">Unsloth 官方仓库</a> — 2x 加速、省显存的微调框架，附大量可直接跑的 Colab notebook。</li>
+<li><a href="https://github.com/hiyouga/LLaMA-Factory">LLaMA-Factory</a> — 零代码/WebUI 微调框架，支持 SFT/DPO/LoRA/全量，国内社区活跃。</li>
+<li><a href="https://huggingface.co/docs/trl/en/peft_integration">HuggingFace PEFT + TRL 教程</a> — PEFT 与 TRL 集成的官方指南。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>用上面的脚本跑通一次完整训练（建议先在 Colab 免费 T4 上跑 0.5B 模型）。训练前后各让模型回答同一个问题，对比输出风格的变化。验收标准：能展示训练日志（train/eval loss 曲线），并用「微调前 vs 微调后」的输出对比，证明模型确实学到了目标风格。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section><section>
+<h2 class="chap-title">第 5 节：DPO/RLHF 对齐、灾难性遗忘与合并部署</h2>
+<p>第 5 节：DPO/RLHF 对齐、灾难性遗忘与合并部署</p>
+<aside class="notes">讲解「第 5 节：DPO/RLHF 对齐、灾难性遗忘与合并部署」。按 ↓ 进入细节。</aside>
+</section><section>
+<h3 class="sub-title">📖 知识点</h3>
+<div class="slide-body"><p>📖 知识点</p>
+<p>SFT 让模型「会按指令回答」，但要让回答更<strong>符合人类偏好</strong>（更有用、更安全、语气更得体），还需要<strong>对齐（alignment）</strong>。这一节把对齐、遗忘、部署三个收尾问题讲清。</p>
+<p><strong>RLHF 与 DPO——从「会答」到「答得好」：</strong></p>
+<ul>
+<li><strong>RLHF（基于人类反馈的强化学习）</strong>：经典三步——SFT → 训练奖励模型（Reward Model，学人类「更喜欢哪个回答」）→ 用 PPO 强化学习优化策略。效果好但<strong>流程复杂、训练不稳、要同时维护 4 个模型</strong>，工程门槛高。</li>
+<li><strong>DPO（Direct Preference Optimization，直接偏好优化）</strong>：2023 年的重要简化。它<strong>跳过显式的奖励模型和 RL</strong>，直接用「偏好数据对（chosen / rejected）」通过一个巧妙的损失函数优化模型，数学上等价于 RLHF 的目标，但<strong>像普通监督训练一样稳定、简单</strong>。数据格式是 <code>{prompt, chosen, rejected}</code>。TRL 提供 <code>DPOTrainer</code>，已成为开源社区对齐的首选。</li>
+<li>典型 pipeline：<strong>先 SFT（学会基本格式与能力）→ 再 DPO（按偏好精修）</strong>。</li>
+</ul>
+<p><strong>灾难性遗忘（Catastrophic Forgetting）——微调的头号副作用：</strong> 模型学新任务时，<strong>可能「忘掉」原有的通用能力</strong>（如微调成客服后，数学/编程能力退化）。成因是梯度更新覆盖了原有知识。<strong>对策：</strong></p>
+<ol>
+<li><strong>用 LoRA</strong>：冻结原权重，天然大幅缓解遗忘（这是 PEFT 被偏爱的又一原因）。</li>
+<li><strong>少量 epoch + 小学习率</strong>：别训太狠。</li>
+<li><strong>混入通用数据</strong>：训练集里掺一定比例的通用指令数据，「提醒」模型别忘本。</li>
+<li><strong>保留验证集监控通用能力</strong>：不只看任务指标，也测下通用能力有没有退化。</li>
+</ol>
+<p><strong>量化训练 vs 量化部署：</strong> 注意区分——QLoRA 是「训练时量化基座以省显存」；部署时还有<strong>推理量化</strong>（GPTQ、AWQ、GGUF 等），把最终模型压成低比特以加速推理、减小体积。两者目的不同但都属「量化」家族。</p>
+<p><strong>合并（merge）与部署：</strong> LoRA 训练出的是 adapter，部署有两种方式：</p>
+<ol>
+<li><strong>不合并，运行时挂载</strong>：基座 + adapter 分开加载，灵活（可热切换多个 adapter），但有轻微推理开销。</li>
+<li><strong>合并（merge_and_unload）</strong>：把 LoRA 权重「焊」回基座，得到一个独立的完整模型。<strong>部署最干净</strong>——和普通模型无异，可直接用 vLLM/TGI 高性能推理、或转 GGUF 给 Ollama/llama.cpp 本地跑。</li>
+</ol>
+<blockquote>
+<p><strong>专家心法</strong>：<strong>LoRA 是缓解灾难性遗忘的最务实手段</strong>——因为它压根没动原始权重。如果你做了全参微调发现模型「变笨了」，八成是遗忘，先换成 LoRA 试试。部署上给个明确建议：<strong>单一任务、追求极致推理性能 → 合并后用 vLLM；需要多任务热切换 → 不合并、动态挂载 adapter</strong>。最后，合并务必在 fp16/bf16 下做，别在 4-bit 量化态直接合并（会掉精度）。</p>
+</blockquote></div>
+<aside class="notes">📖 知识点: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">💻 代码示例</h3>
+<div class="slide-body"><p>💻 代码示例</p>
+<p>演示两件收尾事：把 LoRA adapter 合并进基座导出完整模型，以及 DPO 数据格式与训练骨架。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># === 1) 合并 LoRA adapter 到基座，导出可独立部署的完整模型 ===</span>
+<span class="c1"># pip install transformers peft</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">transformers</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoModelForCausalLM</span><span class="p">,</span> <span class="n">AutoTokenizer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">peft</span><span class="w"> </span><span class="kn">import</span> <span class="n">PeftModel</span>
+
+<span class="n">base_id</span> <span class="o">=</span> <span class="s2">&quot;Qwen/Qwen2.5-0.5B-Instruct&quot;</span>
+<span class="n">adapter_dir</span> <span class="o">=</span> <span class="s2">&quot;./wenyan-lora&quot;</span>
+
+<span class="c1"># 注意：合并要在 fp16/bf16 全精度下做，不要用 4-bit 量化态合并</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">AutoModelForCausalLM</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">base_id</span><span class="p">,</span> <span class="n">torch_dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">,</span> <span class="n">device_map</span><span class="o">=</span><span class="s2">&quot;auto&quot;</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">PeftModel</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">base</span><span class="p">,</span> <span class="n">adapter_dir</span><span class="p">)</span>   <span class="c1"># 挂载 adapter</span>
+
+<span class="n">merged</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">merge_and_unload</span><span class="p">()</span>                       <span class="c1"># ← 把 LoRA 权重焊回基座</span>
+<span class="n">merged</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="s2">&quot;./wenyan-merged&quot;</span><span class="p">)</span>               <span class="c1"># 现在是一个普通完整模型</span>
+<span class="n">AutoTokenizer</span><span class="o">.</span><span class="n">from_pretrained</span><span class="p">(</span><span class="n">base_id</span><span class="p">)</span><span class="o">.</span><span class="n">save_pretrained</span><span class="p">(</span><span class="s2">&quot;./wenyan-merged&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;✅ 已合并并导出，可直接用 vLLM/Ollama 部署&quot;</span><span class="p">)</span>
+</code></pre></div>
+
+<div class="codehilite"><pre><span></span><code><span class="c1"># === 2) DPO 偏好对齐的数据格式与训练骨架 ===</span>
+<span class="c1"># pip install &quot;trl&gt;=0.12&quot; &quot;transformers&gt;=4.46&quot; peft datasets</span>
+<span class="c1"># 钉版本：DPOTrainer 的 processing_class= 为较新 TRL 命名，旧环境会踩签名错误</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trl</span><span class="w"> </span><span class="kn">import</span> <span class="n">DPOTrainer</span><span class="p">,</span> <span class="n">DPOConfig</span>
+
+<span class="c1"># DPO 数据：每条含 prompt + 人类偏好的 chosen + 不偏好的 rejected</span>
+<span class="n">pref_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="o">.</span><span class="n">from_list</span><span class="p">([</span>
+    <span class="p">{</span>
+        <span class="s2">&quot;prompt&quot;</span><span class="p">:</span> <span class="s2">&quot;用户问：这个产品好用吗？&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;chosen&quot;</span><span class="p">:</span> <span class="s2">&quot;这款产品在易用性上表现优秀，多数用户反馈上手快、体验流畅。&quot;</span><span class="p">,</span>  <span class="c1"># 期望的风格</span>
+        <span class="s2">&quot;rejected&quot;</span><span class="p">:</span> <span class="s2">&quot;还行吧，我也不太清楚，你自己试试。&quot;</span><span class="p">,</span>                      <span class="c1"># 不期望的风格</span>
+    <span class="p">},</span>
+    <span class="c1"># ... 真实场景需要数百上千条偏好对</span>
+<span class="p">])</span>
+
+<span class="n">dpo_args</span> <span class="o">=</span> <span class="n">DPOConfig</span><span class="p">(</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;./dpo-out&quot;</span><span class="p">,</span>
+    <span class="n">per_device_train_batch_size</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">learning_rate</span><span class="o">=</span><span class="mf">5e-6</span><span class="p">,</span>        <span class="c1"># DPO 学习率通常比 SFT 更小</span>
+    <span class="n">num_train_epochs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">beta</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>                  <span class="c1"># KL 约束强度：控制模型偏离参考模型的程度</span>
+    <span class="n">bf16</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># trainer = DPOTrainer(model=model, args=dpo_args, train_dataset=pref_data,</span>
+<span class="c1">#                      processing_class=tokenizer, peft_config=peft_config)</span>
+<span class="c1"># trainer.train()    # 用法与 SFTTrainer 高度一致，先 SFT 再 DPO 是常见流程</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;DPO 数据格式：{prompt, chosen, rejected}；beta 控制偏离参考模型的程度&quot;</span><span class="p">)</span>
+</code></pre></div></div>
+<aside class="notes">💻 代码示例: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">📚 推荐资料</h3>
+<div class="slide-body"><p>📚 推荐资料</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2305.18290">DPO 论文</a> — 直接偏好优化的原始论文，理解它如何绕开奖励模型。</li>
+<li><a href="https://huggingface.co/docs/trl/dpo_trainer">TRL DPOTrainer 文档</a> — DPO 训练的官方实现与数据格式。</li>
+<li><a href="https://huggingface.co/blog/rlhf">HuggingFace RLHF 博客</a> — 把 RLHF 三步流程讲清楚的经典科普。</li>
+<li><a href="https://huggingface.co/docs/peft/developer_guides/lora#merge-lora-weights-into-the-base-model">PEFT: Merge LoRA</a> — adapter 合并的官方说明。</li>
+<li><a href="https://docs.vllm.ai/">vLLM 文档</a> — 合并后模型的高性能推理部署方案。</li>
+</ul></div>
+<aside class="notes">📚 推荐资料: 重点讲清原理与示例。</aside>
+</section><section>
+<h3 class="sub-title">🛠 动手实践</h3>
+<div class="slide-body"><p>🛠 动手实践</p>
+<p>把第 4 节训练好的 adapter 合并进基座，导出完整模型；然后用 <code>transformers</code> 的 <code>pipeline</code> 加载合并后的模型做推理，确认风格保留。验收标准：合并前（基座+adapter）与合并后（独立模型）对同一问题的输出一致，证明合并无损；并写一段话说明你的模型该选「合并部署」还是「挂载部署」及理由。</p></div>
+<aside class="notes">🛠 动手实践: 重点讲清原理与示例。</aside>
+</section></section>
+<section>
+<h2 class="chap-title">🎯 阶段实战项目：微调一个领域风格小模型并合并部署</h2>
+<p>🎯 阶段实战项目：微调一个领域风格小模型并合并部署</p>
+<p><strong>背景</strong>：你要为某个细分场景打造一个「风格鲜明」的小模型——例如「鲁迅文风写作助手」「赛博朋克风文案生成器」或「严谨的法律条款解释器」。要求模型在该风格上明显优于基座的「通用 Prompt」效果，且能本地部署。</p>
+<p><strong>要求</strong>：</p>
+<ol>
+<li><strong>选题与数据构建</strong>（项目成败的关键）：</li>
+<li>选定一个清晰、可验证的风格/领域。</li>
+<li>构建 <strong>≥100 条</strong>高质量、风格高度一致的「指令-回答」样本（可人工写，或用更大模型蒸馏生成后人工筛选）。</li>
+<li>严格留出验证集（如 10%）。</li>
+<li><strong>QLoRA 微调</strong>：用 <code>transformers + peft + trl</code> + 4-bit 量化，在消费级显卡/Colab 上完成 SFT。合理设置 <code>r</code>、学习率、epoch，全程监控 train/eval loss。</li>
+<li><strong>防过拟合与遗忘</strong>：epoch 不超过 3；混入少量通用数据；训练后测一下模型的通用能力是否明显退化。</li>
+<li><strong>效果评估</strong>：设计 ≥5 个测试 prompt，做「基座 + 通用 Prompt」vs「微调后模型」的<strong>对照评测</strong>，从风格契合度、稳定性两方面打分。</li>
+<li><strong>合并与部署</strong>：用 <code>merge_and_unload</code> 合并 adapter，导出完整模型，并用 <code>pipeline</code> 或 vLLM 跑通推理。</li>
+</ol>
+<p><strong>技术要点</strong>：微调必要性判断、SFT 数据格式与 chat template、QLoRA 配置、SFTTrainer 流水线、loss 监控与早停、灾难性遗忘缓解、adapter 合并与部署。</p>
+<p><strong>验收标准</strong>：</p>
+<ul>
+<li>微调后模型在目标风格上<strong>明显且稳定地</strong>优于「基座+Prompt」，有对照数据支撑。</li>
+<li>提供 train/eval loss 曲线，能说明没有严重过拟合。</li>
+<li>能验证微调后模型的通用能力没有灾难性退化（如还能正常回答常识问题）。</li>
+<li>成功合并并本地推理，输出独立的完整模型目录。</li>
+</ul>
+<p><strong>可选进阶</strong>：</p>
+<ol>
+<li>在 SFT 之上再做一轮 <strong>DPO</strong>：为模型构造偏好对（更符合 / 不符合目标风格），用 <code>DPOTrainer</code> 精修，对比 SFT-only 与 SFT+DPO 的效果。</li>
+<li>用 <strong>Unsloth</strong> 重跑训练，对比训练速度与显存占用，量化它的加速收益。</li>
+<li>把合并后的模型转成 <strong>GGUF</strong> 格式，用 Ollama/llama.cpp 在 CPU 上本地运行，体验「完全私有化部署」。</li>
+</ol>
+<aside class="notes">讲解「🎯 阶段实战项目：微调一个领域风格小模型并合并部署」。按 ↓ 进入细节。</aside>
+</section>
+</div></div>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+<script>
+Reveal.initialize({hash:true,slideNumber:'c/t',transition:'slide',
+  plugins:[RevealHighlight,RevealNotes]});
+</script></body></html>

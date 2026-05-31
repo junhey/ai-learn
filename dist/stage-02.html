@@ -1,0 +1,362 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>编排框架 · LangChain / LlamaIndex · AI-Learn</title>
+<link rel="stylesheet" href="assets/style.css"></head><body>
+<div class="layout"><aside class="sidebar"><div class="brand">AI-Learn</div><div class="brand-sub">FULL-STACK AI ENGINEER</div><div class="nav-group">学习路径</div><nav class="nav"><a href="index.html"><span class="num">★</span> 课程总览</a><a href="stage-01.html"><span class="num">01</span> LLM 原理与 Prompt 工程</a><a href="stage-02.html" class="active"><span class="num">02</span> LangChain / LlamaIndex</a><a href="stage-03.html"><span class="num">03</span> 检索增强生成</a><a href="stage-04.html"><span class="num">04</span> 智能体</a><a href="stage-05.html"><span class="num">05</span> Fine-tuning</a><a href="stage-06.html"><span class="num">06</span> Evals</a><a href="stage-07.html"><span class="num">07</span> 部署</a><a href="stage-08.html"><span class="num">08</span> LLMOps</a><a href="stage-09.html"><span class="num">09</span> 端到端 AI 产品</a></nav><div class="nav-group">授课模式</div><nav class="nav"><a href="slides/index.html"><span class="num">▶</span> 打开 PPT 演讲</a></nav></aside>
+<main class="content"><div class="crumb">课程总览 / 阶段 02</div><div class="stage-head"><span class="lv lv-基础">基础</span><h1>编排框架 · LangChain / LlamaIndex</h1><div class="goal">掌握用 LCEL 把 Prompt、模型、解析器、记忆与工具串成可维护的管道，并理解何时该用框架、何时不该用</div><div class="stage-meta"><div>⏱ 周期 <b>1.5 周</b></div><div>📋 前置 <b>完成 stage-01（会调 LLM API、懂采样参数与结构化输出）</b></div></div><div class="stack-row"><span>Python</span><span>LangChain (LCEL)</span><span>langchain_openai</span><span>LlamaIndex</span><span>Pydantic</span></div></div><h2 id="1-sdk-langchain">第 1 节：编排框架到底解决什么问题——从裸 SDK 到 LangChain</h2>
+<h3 id="_1">📖 知识点</h3>
+<p>在 stage-01 里，你已经能用 <code>openai</code> 裸 SDK 调通模型了。那为什么还需要 LangChain 这类"编排框架"？答案是：<strong>当应用从"调一次模型"变成"一条由多个步骤组成的流水线"时，裸 SDK 的胶水代码会迅速失控。</strong></p>
+<p>想象一个稍微真实的需求：拿用户问题 → 套一个带变量的 Prompt 模板 → 调模型 → 把输出解析成 JSON → 失败了要重试 → 还要带上历史对话 → 有时要先查知识库再回答。如果全用裸 SDK 手写，你会写出一堆 <code>messages.append(...)</code>、字符串拼接、<code>try/except</code>、手搓的解析函数，而且每换一个模型供应商（OpenAI → 通义 → 本地 vLLM）就要重写一遍。</p>
+<p>LangChain 的核心价值有三层：</p>
+<ul>
+<li><strong>统一抽象</strong>：把"模型""提示词""解析器""检索器""工具"都抽象成标准组件，换供应商只改一行。</li>
+<li><strong>可组合（这是灵魂）</strong>：通过 <strong>LCEL（LangChain Expression Language）</strong>，用 <code>|</code> 操作符像搭乐高一样把组件串成"管道"，每个组件都遵守统一的 <code>Runnable</code> 接口，天然支持流式、异步、批处理、重试、并行。</li>
+<li><strong>生态</strong>：几百个现成的文档加载器、向量库、工具集成，不用重复造轮子。</li>
+</ul>
+<p>但要先泼一盆冷水：<strong>框架不是免费的</strong>。它引入了抽象层、版本碎片化（LangChain 0.1→0.3 经历过剧烈重构）、调试时多了一层"黑盒"。所以本阶段最后一节会专门讲"何时不该用框架"。</p>
+<blockquote>
+<p><strong>专家心法</strong>：把 LangChain 理解成"LLM 时代的管道编排语言"，而不是"一个能帮你写好 Prompt 的魔法盒"。它帮你管理的是<strong>组合与数据流</strong>，不是帮你思考。Prompt 质量、检索质量这些"内功"，框架一点都不会替你提升。</p>
+</blockquote>
+<h3 id="_2">💻 代码示例</h3>
+<p>先装包、跑通最小的 <code>ChatOpenAI</code> 调用。注意 LangChain 0.1 之后已经<strong>模块化拆包</strong>：聊天模型在独立的 <code>langchain_openai</code> 里，不要再 <code>from langchain.chat_models import ...</code>（旧写法已废弃）。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install langchain langchain_openai</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">SystemMessage</span><span class="p">,</span> <span class="n">HumanMessage</span>
+
+<span class="c1"># ChatOpenAI 是对 OpenAI Chat 接口的标准化封装</span>
+<span class="c1"># temperature=0 用于需要稳定输出的场景（见 stage-01）</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># 用标准 Message 对象组织对话，比裸 SDK 的 dict 更类型安全</span>
+<span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">SystemMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;你是一个简洁的技术助手。&quot;</span><span class="p">),</span>
+    <span class="n">HumanMessage</span><span class="p">(</span><span class="n">content</span><span class="o">=</span><span class="s2">&quot;用一句话解释什么是 LCEL。&quot;</span><span class="p">),</span>
+<span class="p">]</span>
+
+<span class="n">resp</span> <span class="o">=</span> <span class="n">llm</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>   <span class="c1"># invoke 是所有 Runnable 的统一同步入口</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">response_metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;token_usage&quot;</span><span class="p">))</span>  <span class="c1"># 用量信息</span>
+</code></pre></div>
+
+<p>换成兼容 OpenAI 接口的国产/本地模型，只需改 <code>base_url</code> 和 <code>model</code>，业务代码一行不动——这就是"统一抽象"的收益：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># 例如指向本地 vLLM / Ollama / 通义等 OpenAI 兼容端点</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;qwen2.5-7b-instruct&quot;</span><span class="p">,</span>
+    <span class="n">base_url</span><span class="o">=</span><span class="s2">&quot;http://localhost:8000/v1&quot;</span><span class="p">,</span>
+    <span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;EMPTY&quot;</span><span class="p">,</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+
+<h3 id="_3">📚 推荐资料</h3>
+<ul>
+<li><a href="https://python.langchain.com/docs/introduction/">LangChain 官方文档 - Introduction</a> — 框架全景与最新（v0.3）架构总览。</li>
+<li><a href="https://python.langchain.com/docs/concepts/">Why LangChain（架构与设计哲学）</a> — 官方概念页，讲清各抽象的职责边界。</li>
+<li><a href="https://python.langchain.com/docs/integrations/chat/openai/">langchain_openai 集成文档</a> — ChatOpenAI 的所有参数与用法。</li>
+<li><a href="https://python.langchain.com/docs/concepts/architecture/">LangChain 包结构说明</a> — 理解 langchain-core / langchain / 集成包的分层。</li>
+</ul>
+<h3 id="_4">🛠 动手实践</h3>
+<p>装好 <code>langchain</code> 与 <code>langchain_openai</code>，用 <code>ChatOpenAI</code> 实现一个最小问答，并打印 token 用量。然后把 <code>base_url</code> 指向任意一个 OpenAI 兼容端点（如 Ollama 跑的本地模型），验证"业务代码不变、只换配置"即可切换供应商。验收标准：同一段调用代码能跑通两个不同的模型后端。</p>
+<h2 id="2-lcel-promptmodelparser">第 2 节：LCEL——用 <code>|</code> 把 Prompt、Model、Parser 串成管道</h2>
+<h3 id="_5">📖 知识点</h3>
+<p>LCEL 是 LangChain 现代写法的<strong>绝对核心</strong>。它的思想借鉴了 Unix 管道：每个组件都实现统一的 <code>Runnable</code> 接口（有 <code>invoke</code> / <code>batch</code> / <code>stream</code> / <code>ainvoke</code> 等方法），于是可以用 <code>|</code> 操作符把它们左到右连起来，前一个的输出自动成为后一个的输入。</p>
+<p>一条最经典的"三件套"管道是：</p>
+<div class="codehilite"><pre><span></span><code>PromptTemplate | ChatModel | OutputParser
+</code></pre></div>
+
+<p>含义是：用户变量填进<strong>提示词模板</strong> → 生成的消息送进<strong>模型</strong> → 模型返回的 <code>AIMessage</code> 经<strong>输出解析器</strong>变成你想要的类型（纯字符串 / JSON / Pydantic 对象）。</p>
+<p>为什么这套设计如此重要？因为 <code>|</code> 拼出来的 <code>chain</code> 本身<strong>又是一个 Runnable</strong>，自动获得这些能力，全部免费：</p>
+<ul>
+<li><code>chain.invoke(x)</code>：跑一次；</li>
+<li><code>chain.batch([x1, x2, ...])</code>：自动批处理；</li>
+<li><code>chain.stream(x)</code>：流式逐 token 输出（做打字机效果）；</li>
+<li><code>await chain.ainvoke(x)</code>：异步，高并发场景必备；</li>
+<li><code>chain.with_retry()</code> / <code>chain.with_fallbacks([...])</code>：重试与降级。</li>
+</ul>
+<p>这就是"组合优于配置"的威力——你不需要为"流式""并发"分别写代码，组合好的管道天然支持。</p>
+<p>几个关键组件：</p>
+<ul>
+<li><strong><code>ChatPromptTemplate</code></strong>：带占位符的提示词模板，<code>from_messages</code> 可定义 system/human/placeholder 多角色，用 <code>{var}</code> 注入变量。</li>
+<li><strong><code>StrOutputParser</code></strong>：最常用，把 <code>AIMessage</code> 抽成纯字符串。</li>
+<li><strong>结构化输出</strong>：现代推荐直接用 <code>llm.with_structured_output(PydanticModel)</code>，比老的 <code>PydanticOutputParser</code>（靠 Prompt 里塞格式说明）更可靠，原理是走模型原生的 function calling / structured outputs（呼应 stage-01）。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：能用 LCEL 表达的逻辑，就不要退回去手写 <code>for</code> 循环和 <code>if</code>。LCEL 管道是声明式的——你描述"数据怎么流"，框架负责"怎么高效执行"。一旦你开始在管道外面写大量胶水代码，往往说明抽象用错了地方，该停下来重新设计数据流。</p>
+</blockquote>
+<h3 id="_6">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatPromptTemplate</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.output_parsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrOutputParser</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># 1) Prompt 模板：{topic} 是运行时注入的变量</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="o">.</span><span class="n">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;你是一位资深技术作者，输出精炼、有洞察。&quot;</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="s2">&quot;用三个要点解释 </span><span class="si">{topic}</span><span class="s2">，每点不超过 20 字。&quot;</span><span class="p">),</span>
+<span class="p">])</span>
+
+<span class="c1"># 2) 用 | 把三件套串成管道；StrOutputParser 把 AIMessage 转成 str</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">llm</span> <span class="o">|</span> <span class="n">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># 3) invoke 传入的 dict 会去填模板里的变量</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chain</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="s2">&quot;向量数据库&quot;</span><span class="p">}))</span>
+
+<span class="c1"># 4) 管道天然支持批处理与流式，无需改写逻辑</span>
+<span class="n">results</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">batch</span><span class="p">([{</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="s2">&quot;RAG&quot;</span><span class="p">},</span> <span class="p">{</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="s2">&quot;Agent&quot;</span><span class="p">}])</span>
+<span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;---&quot;</span><span class="p">,</span> <span class="n">r</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">--- 流式输出 ---&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">chunk</span> <span class="ow">in</span> <span class="n">chain</span><span class="o">.</span><span class="n">stream</span><span class="p">({</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="s2">&quot;LCEL&quot;</span><span class="p">}):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">chunk</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>   <span class="c1"># 打字机效果</span>
+</code></pre></div>
+
+<p>结构化输出推荐用 <code>with_structured_output</code>（替代手搓 Parser）：</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">Field</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">Topic</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;主题名&quot;</span><span class="p">)</span>
+    <span class="n">difficulty</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;难度 1-5&quot;</span><span class="p">)</span>
+    <span class="n">points</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">description</span><span class="o">=</span><span class="s2">&quot;关键要点&quot;</span><span class="p">)</span>
+
+<span class="c1"># 直接绑定 Pydantic 模型，底层走模型原生结构化输出，稳定可靠</span>
+<span class="n">structured_llm</span> <span class="o">=</span> <span class="n">llm</span><span class="o">.</span><span class="n">with_structured_output</span><span class="p">(</span><span class="n">Topic</span><span class="p">)</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">structured_llm</span>
+<span class="n">result</span><span class="p">:</span> <span class="n">Topic</span> <span class="o">=</span> <span class="n">chain</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;topic&quot;</span><span class="p">:</span> <span class="s2">&quot;LangChain&quot;</span><span class="p">})</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">result</span><span class="p">),</span> <span class="n">result</span><span class="o">.</span><span class="n">difficulty</span><span class="p">,</span> <span class="n">result</span><span class="o">.</span><span class="n">points</span><span class="p">)</span>
+</code></pre></div>
+
+<h3 id="_7">📚 推荐资料</h3>
+<ul>
+<li><a href="https://python.langchain.com/docs/concepts/lcel/">LCEL 官方概念文档</a> — Runnable 接口与组合机制的权威说明。</li>
+<li><a href="https://python.langchain.com/docs/concepts/runnables/">Runnable interface 详解</a> — invoke/batch/stream/ainvoke 全接口。</li>
+<li><a href="https://python.langchain.com/docs/how_to/structured_output/">How to use structured outputs</a> — with_structured_output 的完整指南。</li>
+<li><a href="https://python.langchain.com/docs/how_to/#prompt-templates">ChatPromptTemplate How-to</a> — 各类提示词模板用法合集。</li>
+</ul>
+<h3 id="_8">🛠 动手实践</h3>
+<p>用 LCEL 搭一条 <code>ChatPromptTemplate | ChatOpenAI | StrOutputParser</code> 的翻译管道（输入中文，输出英文），然后：(1) 用 <code>batch</code> 一次翻译 5 个句子；(2) 用 <code>stream</code> 实现打字机效果；(3) 再加一个版本用 <code>with_structured_output</code> 返回 <code>{original, translated, word_count}</code> 结构。验收标准：三种调用方式共用同一条核心管道，业务逻辑不重复。</p>
+<h2 id="3-runnablewithmessagehistory">第 3 节：记忆与多轮对话——RunnableWithMessageHistory</h2>
+<h3 id="_9">📖 知识点</h3>
+<p>LLM API 本质是<strong>无状态</strong>的：你每次调用，模型都"失忆"，它能记住上文的唯一原因是你<strong>把历史消息一起塞进了请求</strong>。所谓"对话记忆"，工程上就是"如何存储、注入、裁剪历史消息"。</p>
+<p>很多旧教程用 <code>ConversationBufferMemory</code> 这类 <code>Memory</code> 类——<strong>注意：这些在 LangChain 0.3 里已被标记为 legacy/deprecated，不要再用</strong>。现代标准做法是 <strong><code>RunnableWithMessageHistory</code></strong>：它包裹你的 LCEL 管道，在 Prompt 里用 <code>MessagesPlaceholder</code> 预留一个历史插槽，每次调用时按 <code>session_id</code> 自动把对应会话的历史读出来注入、并把新一轮对话存回去。</p>
+<p>它的关键设计：</p>
+<ul>
+<li>用一个工厂函数 <code>get_session_history(session_id) -&gt; BaseChatMessageHistory</code> 提供存储，你可以接内存（<code>ChatMessageHistory</code>）、Redis、数据库等。</li>
+<li>调用时通过 <code>config={"configurable": {"session_id": "..."}}</code> 区分不同用户/会话，天然支持多用户隔离。</li>
+</ul>
+<p>更进一步要懂<strong>记忆的成本与裁剪</strong>：历史越长，token 越多，越贵越慢，还可能超出上下文窗口。生产里常用策略：</p>
+<ul>
+<li><strong>窗口截断</strong>：只保留最近 N 轮（<code>trim_messages</code>）。</li>
+<li><strong>摘要记忆</strong>：把久远历史用模型压缩成摘要，省 token。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：记忆不是"越多越好"。无脑全量拼接历史是新手最常踩的坑——既烧钱又稀释模型注意力（关键信息淹没在闲聊里）。把"记什么、记多久、怎么压缩"当成一个产品设计问题来权衡。另外提一句方向：LangChain 官方正把有状态/记忆类应用推向 <strong>LangGraph</strong>，它用图 + 持久化 checkpoint 管理状态，比 <code>RunnableWithMessageHistory</code> 更适合复杂多步 Agent；本阶段先用前者打牢基础，stage 后期会接触 LangGraph。</p>
+</blockquote>
+<h3 id="_10">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatPromptTemplate</span><span class="p">,</span> <span class="n">MessagesPlaceholder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.output_parsers</span><span class="w"> </span><span class="kn">import</span> <span class="n">StrOutputParser</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.runnables.history</span><span class="w"> </span><span class="kn">import</span> <span class="n">RunnableWithMessageHistory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.chat_history</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseChatMessageHistory</span><span class="p">,</span> <span class="n">InMemoryChatMessageHistory</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+<span class="c1"># 1) Prompt 里用 MessagesPlaceholder 预留历史插槽</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="o">.</span><span class="n">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;你是友好的助手，会结合上下文连续对话。&quot;</span><span class="p">),</span>
+    <span class="n">MessagesPlaceholder</span><span class="p">(</span><span class="n">variable_name</span><span class="o">=</span><span class="s2">&quot;history&quot;</span><span class="p">),</span>   <span class="c1"># 历史消息注入点</span>
+    <span class="p">(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{input}</span><span class="s2">&quot;</span><span class="p">),</span>
+<span class="p">])</span>
+<span class="n">chain</span> <span class="o">=</span> <span class="n">prompt</span> <span class="o">|</span> <span class="n">llm</span> <span class="o">|</span> <span class="n">StrOutputParser</span><span class="p">()</span>
+
+<span class="c1"># 2) 用一个 dict 当简易存储：session_id -&gt; 历史对象</span>
+<span class="n">store</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">BaseChatMessageHistory</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_session_history</span><span class="p">(</span><span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">BaseChatMessageHistory</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">session_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">store</span><span class="p">:</span>
+        <span class="n">store</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">InMemoryChatMessageHistory</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">store</span><span class="p">[</span><span class="n">session_id</span><span class="p">]</span>
+
+<span class="c1"># 3) 用 RunnableWithMessageHistory 包裹管道</span>
+<span class="n">chat</span> <span class="o">=</span> <span class="n">RunnableWithMessageHistory</span><span class="p">(</span>
+    <span class="n">chain</span><span class="p">,</span>
+    <span class="n">get_session_history</span><span class="p">,</span>
+    <span class="n">input_messages_key</span><span class="o">=</span><span class="s2">&quot;input&quot;</span><span class="p">,</span>     <span class="c1"># 用户输入对应的 key</span>
+    <span class="n">history_messages_key</span><span class="o">=</span><span class="s2">&quot;history&quot;</span><span class="p">,</span> <span class="c1"># 注入历史的 placeholder 名</span>
+<span class="p">)</span>
+
+<span class="c1"># 4) 通过 session_id 区分会话；同一 session 自动带历史</span>
+<span class="n">cfg</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="s2">&quot;user-001&quot;</span><span class="p">}}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chat</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;我叫小明，喜欢爬山。&quot;</span><span class="p">},</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chat</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;我叫什么？我的爱好是什么？&quot;</span><span class="p">},</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg</span><span class="p">))</span>
+<span class="c1"># 第二轮能答出&quot;小明、爬山&quot;——证明历史被正确注入</span>
+
+<span class="c1"># 换一个 session_id，则是全新的、无记忆的对话</span>
+<span class="n">cfg2</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;configurable&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;session_id&quot;</span><span class="p">:</span> <span class="s2">&quot;user-002&quot;</span><span class="p">}}</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">chat</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;我叫什么？&quot;</span><span class="p">},</span> <span class="n">config</span><span class="o">=</span><span class="n">cfg2</span><span class="p">))</span>  <span class="c1"># 答不出来</span>
+</code></pre></div>
+
+<p>历史过长时用 <code>trim_messages</code> 裁剪（接在管道前）：</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.messages</span><span class="w"> </span><span class="kn">import</span> <span class="n">trim_messages</span>
+
+<span class="n">trimmer</span> <span class="o">=</span> <span class="n">trim_messages</span><span class="p">(</span>
+    <span class="n">max_tokens</span><span class="o">=</span><span class="mi">2000</span><span class="p">,</span> <span class="n">strategy</span><span class="o">=</span><span class="s2">&quot;last&quot;</span><span class="p">,</span>   <span class="c1"># 只保留最近的、总量不超 2000 token</span>
+    <span class="n">token_counter</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span> <span class="n">include_system</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># 可在构建 chain 时把 trimmer 接进 history 处理，控制成本</span>
+</code></pre></div>
+
+<h3 id="_11">📚 推荐资料</h3>
+<ul>
+<li><a href="https://python.langchain.com/docs/how_to/message_history/">How to add message history（官方）</a> — RunnableWithMessageHistory 权威用法。</li>
+<li><a href="https://python.langchain.com/docs/how_to/trim_messages/">How to trim messages</a> — 历史裁剪与 token 控制。</li>
+<li><a href="https://python.langchain.com/docs/concepts/chat_history/">Chat history 概念</a> — 记忆模型的设计思路。</li>
+<li><a href="https://langchain-ai.github.io/langgraph/concepts/persistence/">LangGraph 持久化与记忆</a> — 复杂有状态应用的进阶方向。</li>
+</ul>
+<h3 id="_12">🛠 动手实践</h3>
+<p>用 <code>RunnableWithMessageHistory</code> 做一个能记住用户名字和偏好的多轮聊天 CLI，支持用命令行参数切换 <code>session_id</code>。再加上 <code>trim_messages</code>，把历史限制在固定 token 内，并打印每轮请求实际携带的历史条数。验收标准：同一 session 能跨多轮记住信息；不同 session 互相隔离；历史超限时旧消息被正确丢弃。</p>
+<h2 id="4-agent">第 4 节：工具调用与 Agent——让模型能"动手"</h2>
+<h3 id="_13">📖 知识点</h3>
+<p>到目前为止模型只能"说"，不能"做"。但真实应用常需要它查天气、算数、查数据库、调 API——这就是 <strong>Tool Calling（工具调用）</strong> 与 <strong>Agent</strong> 要解决的。</p>
+<p>理解机制最关键的一点：<strong>模型本身不会执行任何代码</strong>。所谓"工具调用"，是模型在看到你声明的工具列表后，决定"该调哪个工具、用什么参数"，然后<strong>以结构化形式（一个 tool_call 请求）返回给你</strong>；真正执行函数的是你的程序。执行完把结果再喂回模型，模型据此组织最终回答。这是一个"模型出意图 → 程序执行 → 结果回灌"的循环。</p>
+<p>现代 LangChain 写法：</p>
+<ul>
+<li>用 <code>@tool</code> 装饰器把普通 Python 函数变成工具，<strong>函数的 docstring 极其重要</strong>——模型靠它判断何时该用这个工具，写不清就调不对。</li>
+<li>用 <code>llm.bind_tools([...])</code> 把工具"挂"到模型上，模型就会在需要时返回 <code>tool_calls</code>。</li>
+<li><strong>Agent</strong> 则把"调工具 → 看结果 → 再决定下一步"这个循环自动化。现代推荐用 <code>create_tool_calling_agent</code> + <code>AgentExecutor</code>（取代了老的、基于文本解析的 ReAct/<code>initialize_agent</code> 写法，那些容易解析失败）。</li>
+</ul>
+<p><strong>Agent 的本质是一个带循环的决策器</strong>：它反复问模型"基于现在掌握的信息，下一步做什么（调工具还是给最终答案）"，直到得出答案或达到步数上限。</p>
+<blockquote>
+<p><strong>专家心法</strong>：工具描述（docstring + 参数 schema）就是给模型的"API 文档"，质量直接决定调用成功率——这比调模型参数重要得多。另外，Agent 很"强大"但也很"贵且慢且不可控"（多轮往返、可能死循环）。生产中能用固定 LCEL 管道（确定性流程）解决的，就别上 Agent；只有当"下一步该做什么"真的需要模型动态决策时，Agent 才是对的工具。</p>
+</blockquote>
+<h3 id="_14">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">langchain_openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatOpenAI</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">tool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain_core.prompts</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChatPromptTemplate</span><span class="p">,</span> <span class="n">MessagesPlaceholder</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">langchain.agents</span><span class="w"> </span><span class="kn">import</span> <span class="n">create_tool_calling_agent</span><span class="p">,</span> <span class="n">AgentExecutor</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="n">ChatOpenAI</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># 1) 用 @tool 定义工具；docstring 是模型判断&quot;何时用&quot;的依据，务必写清</span>
+<span class="nd">@tool</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">b</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;计算两个整数 a 和 b 的和。&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+
+<span class="nd">@tool</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_word_length</span><span class="p">(</span><span class="n">word</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;返回一个英文单词的字母个数。&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">word</span><span class="p">)</span>
+
+<span class="n">tools</span> <span class="o">=</span> <span class="p">[</span><span class="n">add</span><span class="p">,</span> <span class="n">get_word_length</span><span class="p">]</span>
+
+<span class="c1"># 2) Agent 需要一个含 agent_scratchpad 占位符的 Prompt（存放中间步骤）</span>
+<span class="n">prompt</span> <span class="o">=</span> <span class="n">ChatPromptTemplate</span><span class="o">.</span><span class="n">from_messages</span><span class="p">([</span>
+    <span class="p">(</span><span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;你是助手，必要时调用工具，不要凭空计算。&quot;</span><span class="p">),</span>
+    <span class="n">MessagesPlaceholder</span><span class="p">(</span><span class="s2">&quot;chat_history&quot;</span><span class="p">,</span> <span class="n">optional</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;human&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">{input}</span><span class="s2">&quot;</span><span class="p">),</span>
+    <span class="n">MessagesPlaceholder</span><span class="p">(</span><span class="s2">&quot;agent_scratchpad&quot;</span><span class="p">),</span>  <span class="c1"># Agent 记录工具调用过程</span>
+<span class="p">])</span>
+
+<span class="c1"># 3) 组装 Agent 与执行器</span>
+<span class="n">agent</span> <span class="o">=</span> <span class="n">create_tool_calling_agent</span><span class="p">(</span><span class="n">llm</span><span class="p">,</span> <span class="n">tools</span><span class="p">,</span> <span class="n">prompt</span><span class="p">)</span>
+<span class="n">executor</span> <span class="o">=</span> <span class="n">AgentExecutor</span><span class="p">(</span><span class="n">agent</span><span class="o">=</span><span class="n">agent</span><span class="p">,</span> <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># 4) 模型会自己决定先后调用哪些工具</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">executor</span><span class="o">.</span><span class="n">invoke</span><span class="p">({</span><span class="s2">&quot;input&quot;</span><span class="p">:</span> <span class="s2">&quot;单词 &#39;strawberry&#39; 有几个字母？再把这个数和 100 相加。&quot;</span><span class="p">})</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">&quot;output&quot;</span><span class="p">])</span>   <span class="c1"># 应得到 110，全程靠工具而非模型心算</span>
+</code></pre></div>
+
+<p>如果只想看"模型决定调什么工具"（不自动执行），用 <code>bind_tools</code>：</p>
+<div class="codehilite"><pre><span></span><code><span class="n">llm_with_tools</span> <span class="o">=</span> <span class="n">llm</span><span class="o">.</span><span class="n">bind_tools</span><span class="p">(</span><span class="n">tools</span><span class="p">)</span>
+<span class="n">ai_msg</span> <span class="o">=</span> <span class="n">llm_with_tools</span><span class="o">.</span><span class="n">invoke</span><span class="p">(</span><span class="s2">&quot;3 加 5 等于几？&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">ai_msg</span><span class="o">.</span><span class="n">tool_calls</span><span class="p">)</span>  <span class="c1"># [{&#39;name&#39;: &#39;add&#39;, &#39;args&#39;: {&#39;a&#39;: 3, &#39;b&#39;: 5}, ...}]</span>
+<span class="c1"># 注意：此时模型只是&quot;返回了调用意图&quot;，执行 add 是你程序的事</span>
+</code></pre></div>
+
+<h3 id="_15">📚 推荐资料</h3>
+<ul>
+<li><a href="https://python.langchain.com/docs/how_to/tool_calling/">How to use tools（官方）</a> — bind_tools 与 @tool 的权威指南。</li>
+<li><a href="https://python.langchain.com/docs/how_to/agent_executor/">Tool calling agent 教程</a> — create_tool_calling_agent + AgentExecutor。</li>
+<li><a href="https://python.langchain.com/docs/concepts/tools/">LangChain Tools 概念</a> — 工具/工具调用的设计模型。</li>
+<li><a href="https://arxiv.org/abs/2210.03629">ReAct 论文</a> — 理解 Agent "推理+行动"循环的思想源头。</li>
+</ul>
+<h3 id="_16">🛠 动手实践</h3>
+<p>定义两个工具：一个查询"当前时间"，一个做"简单四则运算"（用 Python 安全地算，别用 <code>eval</code> 全量执行）。组装成 <code>AgentExecutor</code>，提问类似"现在几点？再算一下 23×17 等于多少"，开 <code>verbose=True</code> 观察 Agent 的决策轨迹。验收标准：能看到模型自主选择并按顺序调用两个工具，最终给出正确合并答案。</p>
+<h2 id="5-llamaindex">第 5 节：LlamaIndex 的定位，与"何时不该用框架"</h2>
+<h3 id="_17">📖 知识点</h3>
+<p>学了 LangChain，很多人会困惑：<strong>LlamaIndex 又是什么？和 LangChain 是竞品吗？</strong> 准确的理解是：两者有重叠，但<strong>侧重点不同</strong>。</p>
+<ul>
+<li><strong>LangChain</strong> 是<strong>通用编排框架</strong>，强项是把任意组件（模型、工具、Agent、流程）灵活组合成管道，适合做 Agent、复杂工作流、多步骤应用。</li>
+<li><strong>LlamaIndex</strong> 起家于、且至今最擅长 <strong>RAG / 数据索引</strong>。它围绕"如何把你的私有数据高效地灌给 LLM"做了大量开箱即用的封装：丰富的数据连接器（LlamaHub）、节点（Node）抽象、索引结构、查询引擎。在"快速搭一个高质量文档问答"这件事上，LlamaIndex 往往更省心、默认效果更好。</li>
+</ul>
+<p>一句话选型直觉：<strong>做复杂 Agent / 工作流编排，偏 LangChain；做以检索为核心的知识库问答，LlamaIndex 上手更快。</strong> 而且二者可混用（LlamaIndex 可作为 LangChain 的检索器）。stage-03 的 RAG 我们两边的思想都会用到。</p>
+<p>更重要的是要建立"<strong>框架成本意识</strong>"——<strong>何时不该用框架</strong>：</p>
+<ul>
+<li><strong>需求极简单</strong>：只是单次调模型、套个固定 Prompt，裸 SDK 几行就够，引入框架反而增加依赖和认知负担。</li>
+<li><strong>要极致控制/极致性能</strong>：框架的抽象层会隐藏细节、带来开销，对延迟和 token 极敏感的场景，手写更可控。</li>
+<li><strong>团队要长期维护</strong>：LangChain 版本演进快（0.1→0.3 有过破坏性变更），要评估升级成本。</li>
+<li><strong>调试困难时</strong>：当你发现大量时间花在"和框架抽象搏斗"而非业务上，就是信号。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：成熟工程师的判断不是"用不用框架"，而是"<strong>用框架的哪一部分</strong>"。常见的高性价比姿势：用 LangChain 的 LCEL + 文档加载器 + 向量库集成（省事的部分），但 Agent 的核心循环、关键 Prompt 自己掌控（要控制的部分）。框架是工具箱，不是信仰。先能徒手用裸 SDK 实现一遍，再用框架，你才知道框架替你省了什么、藏了什么。</p>
+</blockquote>
+<h3 id="_18">💻 代码示例</h3>
+<p>用 LlamaIndex 搭一个"五行代码级"的文档问答，感受它在 RAG 上的开箱即用（细节原理在 stage-03 展开）：</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install llama-index llama-index-llms-openai llama-index-embeddings-openai</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">llama_index.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">VectorStoreIndex</span><span class="p">,</span> <span class="n">SimpleDirectoryReader</span>
+
+<span class="c1"># 1) 读取 ./data 目录下所有文档（自动识别 pdf/txt/md 等）</span>
+<span class="n">documents</span> <span class="o">=</span> <span class="n">SimpleDirectoryReader</span><span class="p">(</span><span class="s2">&quot;./data&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">load_data</span><span class="p">()</span>
+
+<span class="c1"># 2) 一行建立向量索引（内部自动完成切分→Embedding→建库）</span>
+<span class="n">index</span> <span class="o">=</span> <span class="n">VectorStoreIndex</span><span class="o">.</span><span class="n">from_documents</span><span class="p">(</span><span class="n">documents</span><span class="p">)</span>
+
+<span class="c1"># 3) 得到一个查询引擎并提问</span>
+<span class="n">query_engine</span> <span class="o">=</span> <span class="n">index</span><span class="o">.</span><span class="n">as_query_engine</span><span class="p">()</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">query_engine</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;这些文档讲了什么核心观点？&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">source_nodes</span><span class="p">)</span>   <span class="c1"># 还能拿到引用来源（溯源，stage-03 重点）</span>
+</code></pre></div>
+
+<p>对比一下"何时裸 SDK 更合适"——固定单次任务，没必要上任何框架：</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+<span class="c1"># 就一个固定翻译任务，三行搞定，引入框架纯属负担</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">translate</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;翻译成英文：</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}])</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span>
+</code></pre></div>
+
+<h3 id="_19">📚 推荐资料</h3>
+<ul>
+<li><a href="https://docs.llamaindex.ai/en/stable/">LlamaIndex 官方文档</a> — RAG/索引框架全貌。</li>
+<li><a href="https://docs.llamaindex.ai/en/stable/getting_started/starter_example/">LlamaIndex Starter Tutorial</a> — 五分钟跑通文档问答。</li>
+<li><a href="https://docs.llamaindex.ai/en/stable/getting_started/concepts/">LangChain vs LlamaIndex（官方 LlamaIndex 视角对比）</a> — 理解定位差异。</li>
+<li><a href="https://llamahub.ai/">LlamaHub 数据连接器</a> — 几百个开箱即用的数据源接入。</li>
+</ul>
+<h3 id="_20">🛠 动手实践</h3>
+<p>挑同一个小需求（如"给定一段产品介绍，生成 3 条卖点"），分别用 (1) 裸 OpenAI SDK、(2) LangChain LCEL 两种方式各实现一遍，记录代码行数、依赖数量、可读性。再写一段 200 字的判断笔记：这个需求该不该用框架，理由是什么。验收标准：能基于亲手对比，说清框架带来的收益与成本，而非人云亦云。</p>
+<h2 id="_21">🎯 阶段实战项目：带记忆与工具的多轮对话机器人</h2>
+<p><strong>背景</strong>：你要做一个命令行版的智能助手 "DevBot"，它能连续多轮对话、记住上下文，并且在需要时自动调用工具（查时间、算数、查询一个本地"知识小词典"），而不是靠模型瞎编。</p>
+<p><strong>要求</strong>：</p>
+<ol>
+<li><strong>核心管道用 LCEL 搭建</strong>：<code>ChatPromptTemplate | ChatOpenAI</code>，禁止用已废弃的 <code>ConversationBufferMemory</code> 等 legacy Memory 类。</li>
+<li><strong>多轮记忆</strong>：用 <code>RunnableWithMessageHistory</code> 按 <code>session_id</code> 管理历史；用 <code>trim_messages</code> 把历史控制在固定 token 内（防止越聊越贵）。</li>
+<li><strong>工具调用</strong>：至少实现 3 个 <code>@tool</code>（如 <code>get_current_time</code>、<code>calculator</code>、<code>lookup_term</code>——后者查一个你预置的术语字典 dict）。用 <code>create_tool_calling_agent</code> + <code>AgentExecutor</code> 组装，让模型自主决定何时调工具。</li>
+<li><strong>流式输出</strong>：最终回答用 <code>stream</code> 实现打字机效果。</li>
+<li><strong>CLI 交互</strong>：支持 <code>/new</code> 开新会话（换 session_id）、<code>/exit</code> 退出；每轮打印本次 token 用量。</li>
+</ol>
+<p><strong>技术要点</strong>：LCEL 组合、<code>RunnableWithMessageHistory</code>、<code>MessagesPlaceholder</code>、<code>@tool</code> + docstring 设计、<code>AgentExecutor</code> 循环、<code>trim_messages</code> 成本控制、流式。</p>
+<p><strong>验收标准</strong>：
+- 能多轮记住用户信息（如名字、之前问过的内容）；
+- 问"现在几点 + 算个数"时，能看到 Agent 自主、按序调用工具并给出正确合并结果；
+- <code>/new</code> 后历史清空、互不污染；
+- 历史超过 token 上限时自动裁剪旧消息，程序不崩。</p>
+<p><strong>可选进阶</strong>：
+- 把会话历史持久化到 SQLite（替换内存 dict 的 <code>get_session_history</code>），重启程序后还能续上之前的会话；
+- 加一个"摘要记忆"：当历史超过 N 轮时，用模型把早期对话压缩成一句摘要存入 system，对比纯截断的 token 节省效果；
+- 用 <code>with_fallbacks</code> 给主模型配一个备用模型，主模型超时/报错时自动降级。</p><div class="pager"><a href="stage-01.html"><div class="dir">← 上一阶段</div><div class="ttl">LLM 原理与 Prompt 工程</div></a><a class="next" href="stage-03.html"><div class="dir">下一阶段 →</div><div class="ttl">检索增强生成</div></a></div></main></div></body></html>

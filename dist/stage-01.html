@@ -1,0 +1,205 @@
+<!DOCTYPE html><html lang="zh-CN"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地基 · LLM 原理与 Prompt 工程 · AI-Learn</title>
+<link rel="stylesheet" href="assets/style.css"></head><body>
+<div class="layout"><aside class="sidebar"><div class="brand">AI-Learn</div><div class="brand-sub">FULL-STACK AI ENGINEER</div><div class="nav-group">学习路径</div><nav class="nav"><a href="index.html"><span class="num">★</span> 课程总览</a><a href="stage-01.html" class="active"><span class="num">01</span> LLM 原理与 Prompt 工程</a><a href="stage-02.html"><span class="num">02</span> LangChain / LlamaIndex</a><a href="stage-03.html"><span class="num">03</span> 检索增强生成</a><a href="stage-04.html"><span class="num">04</span> 智能体</a><a href="stage-05.html"><span class="num">05</span> Fine-tuning</a><a href="stage-06.html"><span class="num">06</span> Evals</a><a href="stage-07.html"><span class="num">07</span> 部署</a><a href="stage-08.html"><span class="num">08</span> LLMOps</a><a href="stage-09.html"><span class="num">09</span> 端到端 AI 产品</a></nav><div class="nav-group">授课模式</div><nav class="nav"><a href="slides/index.html"><span class="num">▶</span> 打开 PPT 演讲</a></nav></aside>
+<main class="content"><div class="crumb">课程总览 / 阶段 01</div><div class="stage-head"><span class="lv lv-基础">基础</span><h1>地基 · LLM 原理与 Prompt 工程</h1><div class="goal">理解 LLM 到底在做什么，掌握工程化的提示词设计与稳定的 API 调用</div><div class="stage-meta"><div>⏱ 周期 <b>1 周</b></div><div>📋 前置 <b>Python 基础、会用 pip 与虚拟环境</b></div></div><div class="stack-row"><span>Python</span><span>OpenAI SDK</span><span>Pydantic</span><span>tiktoken</span></div></div><h2 id="1-llm-token">第 1 节：LLM 到底在做什么——下一个 Token 预测</h2>
+<h3 id="_1">📖 知识点</h3>
+<p>大语言模型（LLM）的本质，比大多数人想象的要朴素：<strong>它是一个在海量文本上训练出来的「下一个 token 概率预测器」</strong>。给定一段文本（上下文），模型输出的不是"答案"，而是词表里每一个 token 作为下一个词的概率分布，然后按某种策略采样一个出来，再把它拼回上下文，循环往复。所谓"生成一段话"，其实是这个过程重复了几百上千次。</p>
+<p>理解这一点能解释很多现象：</p>
+<ul>
+<li><strong>为什么会"幻觉"</strong>：模型优化的目标是"下一个词读起来通顺、符合训练分布"，而不是"事实正确"。流畅 ≠ 真实，这是机制层面的，不是 bug。</li>
+<li><strong>为什么 Prompt 如此重要</strong>：你的输入就是模型用来计算概率分布的"上下文"。上下文写得好，高质量回答的概率就高。Prompt 工程本质是在<strong>操纵条件概率</strong>。</li>
+<li><strong>什么是 Token</strong>：模型不是按"字"或"词"处理，而是按 token（子词单元）。英文里一个 token 约 0.75 个单词，中文里一个汉字通常是 1~2 个 token。这直接关系到<strong>成本（按 token 计费）</strong>和<strong>上下文窗口限制</strong>。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：永远记住模型是"概率机器"而非"知识库"。当你需要它给出确定、可溯源的事实时，不要指望它的参数记忆，而要通过 RAG（后续阶段）把事实喂进上下文。</p>
+</blockquote>
+<h3 id="_2">💻 代码示例</h3>
+<p>先把环境和"最小可用调用"跑通。这里用 OpenAI 新版 SDK（<code>&gt;=1.0</code>），注意旧教程里的 <code>openai.ChatCompletion.create</code> 已废弃。</p>
+<div class="codehilite"><pre><span></span><code><span class="c1"># pip install openai tiktoken</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+
+<span class="c1"># 推荐用环境变量管理密钥，不要硬编码到代码里</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;OPENAI_API_KEY&quot;</span><span class="p">])</span>
+
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
+    <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;你是一个简洁的技术助手。&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;用一句话解释什么是 token。&quot;</span><span class="p">},</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;用量:&quot;</span><span class="p">,</span> <span class="n">resp</span><span class="o">.</span><span class="n">usage</span><span class="p">)</span>  <span class="c1"># prompt_tokens / completion_tokens / total_tokens</span>
+</code></pre></div>
+
+<p>观察 <code>resp.usage</code>——这就是你的账单。再用 <code>tiktoken</code> 看看 token 是怎么切的：</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">tiktoken</span>
+<span class="n">enc</span> <span class="o">=</span> <span class="n">tiktoken</span><span class="o">.</span><span class="n">encoding_for_model</span><span class="p">(</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">)</span>
+<span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;Hello, 世界! LLM&quot;</span>
+<span class="n">tokens</span> <span class="o">=</span> <span class="n">enc</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tokens</span><span class="p">),</span> <span class="n">tokens</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">([</span><span class="n">enc</span><span class="o">.</span><span class="n">decode</span><span class="p">([</span><span class="n">t</span><span class="p">])</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tokens</span><span class="p">])</span>  <span class="c1"># 看每个 token 对应的片段</span>
+</code></pre></div>
+
+<h3 id="_3">📚 推荐资料</h3>
+<ul>
+<li><a href="https://jalammar.github.io/illustrated-transformer/">The Illustrated Transformer</a> — 图解 Transformer，理解模型内部最经典的入门读物。</li>
+<li><a href="https://platform.openai.com/tokenizer">OpenAI Tokenizer 可视化</a> — 在线看任意文本如何被切成 token。</li>
+<li><a href="https://www.youtube.com/watch?v=kCc8FmEb1nY">Andrej Karpathy: Let's build GPT (YouTube)</a> — 从零手写一个 GPT，彻底搞懂"下一个 token 预测"。</li>
+<li><a href="https://huggingface.co/learn/llm-course">Hugging Face LLM Course</a> — 系统的免费课程。</li>
+</ul>
+<h3 id="_4">🛠 动手实践</h3>
+<p>写一个脚本，输入任意一段中英混合文本，输出：(1) token 总数；(2) 每个 token 解码后的片段；(3) 估算用 gpt-4o-mini 调用一次的输入成本（自行查当前价格）。验收标准：能正确显示"中文一个字常占 1~2 token"这一现象。</p>
+<h2 id="2-temperaturetop-p">第 2 节：采样参数——Temperature、Top-p 与确定性</h2>
+<h3 id="_5">📖 知识点</h3>
+<p>模型给出概率分布后，"挑哪个 token"由采样策略决定。掌握这几个参数是写出稳定应用的前提：</p>
+<ul>
+<li><strong>temperature（温度，0~2）</strong>：缩放概率分布的"陡峭程度"。<code>temperature=0</code> 近似贪心解码，每次都选概率最高的 token，输出最确定、最可复现；温度越高，分布越平，输出越随机、越有创意，也越容易跑偏。<strong>做抽取/分类/代码用低温（0~0.3），做创意写作用高温（0.7~1.0）</strong>。</li>
+<li><strong>top_p（核采样，0~1）</strong>：只在累积概率达到 p 的最小 token 集合里采样。<code>top_p=0.1</code> 表示只从最可能的那一小撮里选。它和 temperature 是两种控制随机性的旋钮，<strong>实践中通常只调其中一个</strong>，另一个保持默认。</li>
+<li><strong>max_tokens</strong>：限制输出长度，直接影响成本和延迟。</li>
+<li><strong>seed</strong>：部分模型支持，配合 <code>temperature=0</code> 提升可复现性（但不保证 100%）。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：生产环境里，凡是需要"结构稳定、可解析"的输出（如返回 JSON），一律用 <code>temperature=0</code>。不确定性是 Demo 的浪漫，是生产的灾难。</p>
+</blockquote>
+<h3 id="_6">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">ask</span><span class="p">(</span><span class="n">prompt</span><span class="p">,</span> <span class="n">temperature</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
+        <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">prompt</span><span class="p">}],</span>
+        <span class="n">temperature</span><span class="o">=</span><span class="n">temperature</span><span class="p">,</span>
+        <span class="n">max_tokens</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span>
+
+<span class="c1"># 同一个 prompt，对比不同温度的&quot;发散度&quot;</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">=== temperature=</span><span class="si">{</span><span class="n">t</span><span class="si">}</span><span class="s2"> ===&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">ask</span><span class="p">(</span><span class="s1">&#39;给一家咖啡店起个名字&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">t</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># 你会看到 0.0 两次几乎一致，1.2 两次差异很大</span>
+</code></pre></div>
+
+<h3 id="_7">📚 推荐资料</h3>
+<ul>
+<li><a href="https://platform.openai.com/docs/api-reference/chat/create">OpenAI API Reference - Chat</a> — 所有参数的权威说明。</li>
+<li><a href="https://huggingface.co/blog/how-to-generate">How to generate text (Hugging Face)</a> — 贪心/beam/top-k/top-p 采样策略详解。</li>
+<li><a href="https://www.hopsworks.ai/dictionary/llm-temperature">What is temperature in LLMs?</a> — 温度参数直觉化解释。</li>
+</ul>
+<h3 id="_8">🛠 动手实践</h3>
+<p>写一个函数，对同一个 prompt 分别用 temperature ∈ {0, 0.5, 1.0, 1.5} 各调用 3 次，把输出整理成一张表格，直观感受"温度 vs 一致性"的关系。验收标准：能用数据说明为什么抽取任务该用低温。</p>
+<h2 id="3-llm-json">第 3 节：结构化输出——让 LLM 返回可靠的 JSON</h2>
+<h3 id="_9">📖 知识点</h3>
+<p>应用开发中，你几乎从不需要"一段自然语言"，而是需要<strong>程序能直接解析的结构化数据</strong>。让 LLM 稳定吐出合法 JSON 是工程化第一道坎。三种从弱到强的手段：</p>
+<ol>
+<li><strong>Prompt 里要求</strong>："请只返回 JSON，不要任何解释"——简单但不可靠，模型可能加 ```json 包裹或多余文字。</li>
+<li><strong>JSON Mode</strong>：<code>response_format={"type": "json_object"}</code>，模型保证输出是合法 JSON（但不保证字段符合你的 schema）。</li>
+<li><strong>Structured Outputs / 工具约束</strong>：用 <code>response_format</code> 传入 JSON Schema（或配合 Pydantic），模型<strong>保证字段结构完全符合</strong>。这是目前最可靠的方式。</li>
+</ol>
+<p>配合 <strong>Pydantic</strong> 做校验，能把"模型输出"无缝接入你的类型系统，出错时立刻暴露。</p>
+<blockquote>
+<p><strong>专家心法</strong>：不要用正则去"抠"模型返回的 JSON——那是脆弱的补丁。用平台原生的 Structured Outputs + Pydantic 校验，让非法输出在边界处就被拦下。</p>
+</blockquote>
+<h3 id="_10">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+
+<span class="c1"># 1) 定义你想要的结构</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Article</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">title</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">tags</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">sentiment</span><span class="p">:</span> <span class="nb">str</span>  <span class="c1"># positive / neutral / negative</span>
+
+<span class="c1"># 2) 用 SDK 的 parse 接口直接拿到结构化对象（Structured Outputs）</span>
+<span class="n">resp</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">beta</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
+    <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;抽取文章信息。&quot;</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="s2">&quot;标题：AI 改变世界。内容积极向上，关于人工智能与未来。&quot;</span><span class="p">},</span>
+    <span class="p">],</span>
+    <span class="n">response_format</span><span class="o">=</span><span class="n">Article</span><span class="p">,</span>   <span class="c1"># 直接传 Pydantic 模型</span>
+    <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">article</span><span class="p">:</span> <span class="n">Article</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">parsed</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">article</span><span class="o">.</span><span class="n">title</span><span class="p">,</span> <span class="n">article</span><span class="o">.</span><span class="n">tags</span><span class="p">,</span> <span class="n">article</span><span class="o">.</span><span class="n">sentiment</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">article</span><span class="p">))</span>  <span class="c1"># &lt;class &#39;__main__.Article&#39;&gt; —— 已是强类型对象</span>
+</code></pre></div>
+
+<h3 id="_11">📚 推荐资料</h3>
+<ul>
+<li><a href="https://platform.openai.com/docs/guides/structured-outputs">OpenAI Structured Outputs 指南</a> — 官方权威，含 schema 限制说明。</li>
+<li><a href="https://docs.pydantic.dev/latest/">Pydantic 官方文档</a> — 数据校验事实标准，AI 工程必备。</li>
+<li><a href="https://python.useinstructor.com/">Instructor 库</a> — 跨模型的结构化输出封装，多模型场景神器。</li>
+</ul>
+<h3 id="_12">🛠 动手实践</h3>
+<p>定义一个 <code>Resume</code>（简历）Pydantic 模型，含 name、years_of_experience（int）、skills（list）、是否符合某岗位（bool）。给一段自由格式的简历文本，让模型抽取并校验。验收标准：当模型返回字段类型不对时，Pydantic 能抛出清晰错误。</p>
+<h2 id="4-zero-shot-cot">第 4 节：提示词工程实战——从 Zero-shot 到 CoT</h2>
+<h3 id="_13">📖 知识点</h3>
+<p>Prompt 工程不是"咒语玄学"，而是有章法的工程实践。核心技巧：</p>
+<ul>
+<li><strong>角色与指令（System Prompt）</strong>：设定模型身份、语气、约束。把"它是谁、做什么、不做什么"讲清楚。</li>
+<li><strong>Few-shot（少样本示例）</strong>：在 prompt 里给 2~5 个"输入→输出"范例，模型会模仿格式和风格。对格式要求严、任务偏门时极有效。</li>
+<li><strong>Chain-of-Thought（CoT，思维链）</strong>：对需要推理的任务，加一句"让我们一步步思考"或要求模型先写推理过程再给答案，能显著提升正确率。原理是给模型更多"中间计算 token"的空间。</li>
+<li><strong>分隔符与结构化</strong>：用 <code>###</code>、XML 标签、Markdown 把指令、上下文、数据分区，减少模型混淆。</li>
+<li><strong>明确输出格式</strong>：与其说"简短点"，不如说"用不超过 3 个 bullet"。约束越具体越好。</li>
+</ul>
+<blockquote>
+<p><strong>专家心法</strong>：调 Prompt 时遵循"控制变量"原则——一次只改一个地方，记录效果。把好用的 Prompt 当代码一样<strong>版本管理</strong>，这是后续 LLMOps 阶段的伏笔。</p>
+</blockquote>
+<h3 id="_14">💻 代码示例</h3>
+<div class="codehilite"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+<span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">()</span>
+
+<span class="c1"># Few-shot + CoT 组合：做一个稳定的&quot;情感分类 + 理由&quot;任务</span>
+<span class="n">SYSTEM</span> <span class="o">=</span> <span class="s2">&quot;你是情感分析专家，只输出指定格式。&quot;</span>
+<span class="n">FEWSHOT</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;示例：</span>
+<span class="s2">输入：这家店服务太差了，再也不来。</span>
+<span class="s2">输出：{&quot;label&quot;: &quot;negative&quot;, &quot;reason&quot;: &quot;表达不满与拒绝再次光顾&quot;}</span>
+
+<span class="s2">输入：还行吧，没什么特别的。</span>
+<span class="s2">输出：{&quot;label&quot;: &quot;neutral&quot;, &quot;reason&quot;: &quot;评价中性、无明显倾向&quot;}</span>
+<span class="s2">&quot;&quot;&quot;</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">classify</span><span class="p">(</span><span class="n">text</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">=</span><span class="s2">&quot;gpt-4o-mini&quot;</span><span class="p">,</span>
+        <span class="n">messages</span><span class="o">=</span><span class="p">[</span>
+            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;system&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="n">SYSTEM</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;role&quot;</span><span class="p">:</span> <span class="s2">&quot;user&quot;</span><span class="p">,</span> <span class="s2">&quot;content&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">FEWSHOT</span><span class="si">}</span><span class="se">\n</span><span class="s2">输入：</span><span class="si">{</span><span class="n">text</span><span class="si">}</span><span class="se">\n</span><span class="s2">输出：&quot;</span><span class="p">},</span>
+        <span class="p">],</span>
+        <span class="n">temperature</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">r</span><span class="o">.</span><span class="n">choices</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">message</span><span class="o">.</span><span class="n">content</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">classify</span><span class="p">(</span><span class="s2">&quot;物流很快，包装也用心，超出预期！&quot;</span><span class="p">))</span>
+<span class="c1"># -&gt; {&quot;label&quot;: &quot;positive&quot;, &quot;reason&quot;: &quot;...&quot;}</span>
+</code></pre></div>
+
+<h3 id="_15">📚 推荐资料</h3>
+<ul>
+<li><a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI Prompt Engineering 指南</a> — 官方六大策略。</li>
+<li><a href="https://www.promptingguide.ai/zh">Prompt Engineering Guide (DAIR.AI)</a> — 最全的中文提示工程指南。</li>
+<li><a href="https://arxiv.org/abs/2201.11903">Chain-of-Thought Prompting 论文</a> — CoT 的原始论文，理解其有效性来源。</li>
+<li><a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">Anthropic Prompt Engineering</a> — 另一视角的高质量实践。</li>
+</ul>
+<h3 id="_16">🛠 动手实践</h3>
+<p>挑一个"模型容易答错"的推理题（如简单数学应用题），分别用 (1) 直接问、(2) 加"一步步思考"、(3) Few-shot 示范推理过程，三种 Prompt 各测 5 次，统计正确率。验收标准：用数据证明 CoT 对推理任务的提升。</p>
+<h2 id="cli">🎯 阶段实战项目：智能信息抽取 CLI</h2>
+<p><strong>背景</strong>：你拿到一批杂乱的客户反馈文本，需要批量结构化，导入数据库分析。</p>
+<p><strong>要求</strong>：</p>
+<ol>
+<li>用 Pydantic 定义反馈结构：<code>category</code>（枚举：bug/feature/praise/other）、<code>urgency</code>（1~5 int）、<code>summary</code>（一句话）、<code>needs_reply</code>（bool）。</li>
+<li>写一个命令行工具，读入一个 <code>.txt</code>（每行一条反馈），用 <code>temperature=0</code> + Structured Outputs 逐条抽取，输出为 <code>.jsonl</code>。</li>
+<li>加入错误处理：单条失败不影响整体，记录失败行。</li>
+<li>打印统计：总 token 消耗、估算成本、各 category 数量。</li>
+</ol>
+<p><strong>技术要点</strong>：System Prompt 设计、Structured Outputs、Pydantic 校验、usage 统计、批处理容错。</p>
+<p><strong>验收标准</strong>：给 20 条混合反馈，能稳定输出合法 jsonl，且统计准确。</p>
+<p><strong>可选进阶</strong>：加上 <code>--concurrency</code> 参数用 <code>asyncio</code> 并发调用，对比串行/并发的总耗时（为后续高并发打基础）。</p><div class="pager"><a href="index.html"><div class="dir">← 返回</div><div class="ttl">课程总览</div></a><a class="next" href="stage-02.html"><div class="dir">下一阶段 →</div><div class="ttl">LangChain / LlamaIndex</div></a></div></main></div></body></html>

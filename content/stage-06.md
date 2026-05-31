@@ -1,0 +1,362 @@
+---
+stage: 6
+title: "评估体系 · Evals"
+level: "高级"
+duration: "1.5 周"
+goal: "建立可量化、可回归、可上线对照的评估闭环，让 AI 应用从「拍脑袋调 Prompt」进化为「用数据驱动迭代」"
+prereq: "完成 stage-01~05（Prompt、RAG、Agent、LLMOps 基础），熟悉 Python 与 pytest"
+stack: ["Ragas", "DeepEval", "promptfoo", "pytest", "OpenAI SDK"]
+---
+
+## 第 1 节：为什么「没有评估就没有迭代」
+
+### 📖 知识点
+
+很多团队的 AI 应用迭代是这样的：改一句 Prompt，自己跑两三个例子看着「好像变好了」，就发布。这套流程在 Demo 阶段能跑，但一旦进生产就会反复翻车——因为**你根本不知道这次改动是真的变好了，还是只是在你测的那两个例子上变好了，同时悄悄拖垮了另外二十种你没测的情况**。这就是 LLM 应用区别于传统软件最致命的一点：它的行为是概率性的、连续的，没有「编译通过 = 正确」这种二元保证。
+
+评估（Evals）要解决的核心问题，是把「我觉得变好了」变成「在 200 条代表性样本上，faithfulness 从 0.78 提升到 0.86，且没有任何一类回归」。一旦你有了这把尺子，迭代就从**线性的手工试错**变成**可并行、可对照、可回滚的工程流程**：你可以同时测 5 个 Prompt 版本、自动跑回归、用数据决定是否上线。这就是「没有评估就没有迭代」的真正含义——**没有度量，所有的「优化」都是在黑暗中挥拳**。
+
+要理解评估体系，先建立两个正交的维度：
+
+- **离线评估（Offline Eval）vs 在线评估（Online Eval）**：离线是在固定的「黄金数据集」上跑指标，用于上线前快速验证、回归测试、CI 卡口；在线是在真实生产流量上采集信号（用户点赞/点踩、停留时长、是否复制答案、转化率、人工抽检），用于捕捉离线数据集覆盖不到的真实分布。两者缺一不可：离线快但分布固定，在线真实但慢且有噪声。
+- **参考式（Reference-based）vs 无参考式（Reference-free）**：前者需要标准答案（如有 ground truth 的 QA），可算准确率、recall；后者没有标准答案（如开放式问答、摘要），只能评「答案是否忠实于上下文」「是否回答了问题」这类可在无标准答案下判定的属性。生产中大量任务是无参考式的，这正是 LLM-as-Judge 大显身手的地方。
+
+> **专家心法**：评估体系的成熟度，直接决定团队迭代速度的上限。优秀团队的秘密往往不是「Prompt 写得多神」，而是「他们能在 10 分钟内用数据判断一个改动该不该上」。先投资评估，再投资优化——顺序反了，你会在原地打转。
+
+### 💻 代码示例
+
+先用最朴素的方式建立直觉：一个「评估 = 数据集 + 指标 + 跑批」的最小骨架，不依赖任何框架，看清评估的本质。
+
+```python
+# 评估的本质：在固定数据集上，对系统输出逐条打分，再聚合
+from dataclasses import dataclass
+from statistics import mean
+
+@dataclass
+class Sample:
+    question: str
+    expected_keywords: list[str]   # 这条样本「答对」应包含的关键信息
+
+# 你的待评估系统（这里用桩函数代替真实 RAG/Agent）
+def my_app(question: str) -> str:
+    # 实际中这里调用你的 RAG / Agent 流水线
+    return "RAG 是检索增强生成，先检索相关文档再让模型基于文档作答。"
+
+# 黄金数据集（离线评估的基石）
+golden_set = [
+    Sample("什么是 RAG？", ["检索", "生成", "文档"]),
+    Sample("RAG 解决什么问题？", ["幻觉", "知识", "时效"]),
+]
+
+def keyword_recall(answer: str, keywords: list[str]) -> float:
+    """一个最简单的参考式指标：关键信息命中率"""
+    hit = sum(1 for k in keywords if k in answer)
+    return hit / len(keywords)
+
+# 跑批 + 聚合
+scores = []
+for s in golden_set:
+    ans = my_app(s.question)
+    score = keyword_recall(ans, s.expected_keywords)
+    scores.append(score)
+    print(f"Q: {s.question:20s} score={score:.2f}")
+
+print(f"\n整体得分: {mean(scores):.3f}")
+# 关键：每次改完系统重跑这段，分数变化就是你的「客观反馈」
+```
+
+这个骨架虽简陋，却包含了所有评估系统的三要素：**数据集、打分函数、聚合**。后面所有框架（Ragas/DeepEval）做的事，本质都是把「打分函数」做得更聪明（用 LLM 打分、算语义相似度），把「聚合」做得更专业（分维度、出报告）。
+
+### 📚 推荐资料
+
+- [Your AI Product Needs Evals (Hamel Husain)](https://hamel.dev/blog/posts/evals/) — 业界公认讲透「为什么要做 Evals、怎么做」的雄文，必读。
+- [OpenAI Evals 框架](https://github.com/openai/evals) — OpenAI 官方开源评估框架与样例库，理解评估工程化的标准形态。
+- [Anthropic: Building Evaluations](https://docs.anthropic.com/en/docs/test-and-evaluate/eval-tool) — 从产品角度讲如何为 LLM 应用设计评估。
+- [Eugene Yan: Task-Specific LLM Evals](https://eugeneyan.com/writing/llm-evaluators/) — 深入讨论各类任务该用什么评估方法。
+
+### 🛠 动手实践
+
+挑你现有的一个 LLM 调用（分类/抽取/问答均可），手工构造 10 条带「期望要点」的样本，用上面的骨架写出一个 `eval.py`。要求：(1) 能跑批输出每条得分与整体均分；(2) 故意把 Prompt 改坏一次，确认整体分数下降。验收标准：你能用「分数从 X 降到 Y」这句话，而非「感觉变差了」，来描述一次改动。
+
+## 第 2 节：LLM-as-Judge——用模型来评模型
+
+### 📖 知识点
+
+对于开放式任务（摘要质量、回答是否有帮助、语气是否专业、是否答非所问），传统指标（BLEU、ROUGE、关键词匹配）严重失效——因为同一个意思有无数种表达，字面匹配根本抓不住「语义」。这时业界的主流解法是 **LLM-as-Judge**：用一个能力更强（或同级）的 LLM 充当裁判，按你给定的评分标准（rubric）给被测系统的输出打分或做排序。它的有效性来自一个朴素事实：**判断一个答案好不好，往往比生成一个好答案更容易**——这对模型同样成立。
+
+LLM-as-Judge 有三种典型形态：
+
+- **打分式（Pointwise / Direct Scoring）**：让裁判按 rubric 给单条输出打 1~5 分或 0/1。简单、可聚合，但分数校准（calibration）较难，不同批次可能漂移。
+- **成对比较式（Pairwise Comparison）**：给裁判两个答案 A/B，让它选哪个更好。比绝对打分**更稳定、更符合人类偏好**（人类也更擅长比较而非打绝对分），是 A/B 评估和模型对比的首选。
+- **参考式打分（Reference-guided）**：同时给裁判「标准答案」和「待评答案」，让它判断待评答案是否与标准答案语义一致。适合有 ground truth 的场景。
+
+但 LLM-as-Judge 有几个**必须警惕的坑**，专家和新手的差距全在这里：
+
+1. **位置偏见（Position Bias）**：成对比较时，裁判倾向于选第一个（或第二个）。**解法**：交换 A/B 位置各评一次，结果一致才算数，否则判平局。
+2. **冗长偏见（Verbosity Bias）**：裁判倾向于认为更长的答案更好。**解法**：在 rubric 里明确「简洁准确优于冗长」。
+3. **自我偏好（Self-enhancement Bias）**：模型倾向于偏爱自己生成的风格。**解法**：用不同家族的模型当裁判（如被测是 GPT，裁判用 Claude）。
+4. **评分标准必须具体**：让裁判「打个分」会得到随机数；必须给出**带明确档位定义**的 rubric，并要求它**先给理由再给分**（CoT 能显著提升裁判一致性）。
+
+> **专家心法**：LLM-as-Judge 不是甩手掌柜。上线前一定要做「裁判的裁判」——抽 30~50 条人工标注，算裁判分数与人工分数的相关性（如 Cohen's Kappa 或 Spearman）。**如果裁判和人类都对不齐，它给的所有分数都是幻觉**。先校准裁判，再信任裁判。
+
+### 💻 代码示例
+
+实现一个带「先理由后打分」+「位置去偏」的成对比较裁判，这是生产可用的最小正确实现。
+
+```python
+# pip install openai pydantic
+from openai import OpenAI
+from pydantic import BaseModel
+from typing import Literal
+
+client = OpenAI()
+
+class Verdict(BaseModel):
+    reasoning: str                          # 强制先给理由（CoT 提升一致性）
+    winner: Literal["A", "B", "tie"]
+
+JUDGE_RUBRIC = """你是严格的答案评审。根据以下标准判断哪个回答更好：
+1. 事实准确性（最重要）
+2. 是否切题、完整回答了问题
+3. 简洁清晰（同等准确下，简洁优于冗长——不要因为答案长就偏向它）
+请先在 reasoning 中逐条分析，再给出 winner。"""
+
+def judge_pairwise(question: str, ans_a: str, ans_b: str) -> Verdict:
+    resp = client.beta.chat.completions.parse(
+        model="gpt-4o",                      # 裁判建议用强模型
+        messages=[
+            {"role": "system", "content": JUDGE_RUBRIC},
+            {"role": "user", "content":
+                f"问题：{question}\n\n[回答A]\n{ans_a}\n\n[回答B]\n{ans_b}"},
+        ],
+        response_format=Verdict,
+        temperature=0,                        # 裁判必须用 0 温度，保证可复现
+    )
+    return resp.choices[0].message.parsed
+
+def robust_compare(question: str, ans_a: str, ans_b: str) -> str:
+    """位置去偏：正反各评一次，一致才采信，否则判平局"""
+    v1 = judge_pairwise(question, ans_a, ans_b)          # A在前
+    v2 = judge_pairwise(question, ans_b, ans_a)          # B在前（位置交换）
+    # 把 v2 的视角翻译回 A/B 体系
+    v2_winner = {"A": "B", "B": "A", "tie": "tie"}[v2.winner]
+    if v1.winner == v2_winner:
+        return v1.winner          # 两次一致，结论可信
+    return "tie"                  # 位置一换结论就变，说明裁判没把握 -> 平局
+
+q = "RAG 和微调的区别是什么？"
+a = "RAG 在推理时检索外部知识注入上下文；微调是用数据更新模型权重。RAG 适合知识频繁更新，微调适合改变模型行为风格。"
+b = "RAG 好，微调也好，都能用。"
+print("胜者:", robust_compare(q, a, b))   # 期望: A
+```
+
+注意几个生产级细节：裁判用 `temperature=0`、强制结构化输出、强制先 reasoning 后结论、位置去偏。这些不是锦上添花，而是让裁判结果**可信**的必要条件。
+
+### 📚 推荐资料
+
+- [Judging LLM-as-a-Judge (MT-Bench 论文)](https://arxiv.org/abs/2306.05685) — 系统研究 LLM 裁判的偏见与可靠性，奠基性论文。
+- [DeepEval G-Eval 文档](https://deepeval.com/docs/metrics-llm-evals) — G-Eval：用 CoT 让 LLM 按自定义 rubric 打分的成熟实现。
+- [Eugene Yan: LLM-as-Judge 全面综述](https://eugeneyan.com/writing/llm-evaluators/) — 各种偏见与缓解手段的实战总结。
+- [OpenAI Cookbook: Getting Started with Evals](https://cookbook.openai.com/examples/evaluation/getting_started_with_openai_evals) — 含 LLM 打分的可运行示例。
+
+### 🛠 动手实践
+
+用上面的 `robust_compare` 搭一个「Prompt 版本擂台」：准备 8 个问题，用两个不同 Prompt（v1 简洁版、v2 啰嗦版）各生成答案，让裁判两两 PK，统计 v1 vs v2 的胜场。然后**人工**也判一遍这 8 局，算裁判和你的一致率。验收标准：能指出裁判在哪局和你不一致，并解释是否触发了某种已知偏见。
+
+## 第 3 节：RAG 评估三元组与幻觉检测——Ragas 实战
+
+### 📖 知识点
+
+RAG 系统有两个可能出错的环节：**检索**（retriever 找回的文档对不对）和**生成**（generator 是否忠实地基于文档作答）。如果只看最终答案对不对，你无法定位是哪个环节出了问题。RAG 评估的精髓，是把这条链路拆开，分别度量。业界公认的框架是 **RAG 评估三元组（RAG Triad）**，它围绕「问题 / 检索到的上下文 / 答案」三者之间的三条边来度量：
+
+- **Context Relevance（上下文相关性）**：检索回来的上下文，和「问题」相关吗？衡量的是 **retriever 的质量**。如果检索回一堆无关文档，再强的模型也救不回来（garbage in, garbage out）。
+- **Faithfulness / Groundedness（忠实度）**：答案里的每个论断，都能在「检索到的上下文」里找到依据吗？衡量的是**模型有没有瞎编**。这是 **RAG 场景下幻觉检测的核心指标**——RAG 的承诺就是「基于给定材料作答」，违背这一点就是幻觉。
+- **Answer Relevance（答案相关性）**：答案真的回答了「问题」吗，还是答非所问、绕圈子？衡量的是**生成内容的针对性**。
+
+理解这个三元组的威力在于**故障定位**：context relevance 低 → 去优化检索（embedding 模型、chunk 策略、rerank）；faithfulness 低 → 去收紧 Prompt（强调「只基于上下文」）或换模型；answer relevance 低 → 去优化生成指令。**它把一个模糊的「RAG 效果不好」拆成了三个可独立攻坚的工程问题。**
+
+**Ragas** 是目前最流行的 RAG 评估库，它把上述指标用 LLM-as-Judge 的方式自动化实现了。其中 Faithfulness 的实现尤其巧妙：它先用 LLM 把答案拆解成一个个原子「论断（claim）」，再逐条判断每个论断能否被上下文支撑，最后算「被支撑的论断 / 总论断」——这种「先分解再核验」的思路，正是幻觉检测的通用范式，值得你在任何忠实度检查中借鉴。
+
+> **专家心法**：永远分维度看 RAG 指标，绝不只看一个「总分」。我见过太多团队对着下降的总分干瞪眼，拆成三元组后才发现是上周换了 chunk 大小导致 context relevance 崩了。**指标的价值不在于「高低」，而在于「可归因」。**
+
+### 💻 代码示例
+
+用 Ragas 现代 API（`EvaluationDataset` + 指标类）评估一组 RAG 输出。Ragas 的指标默认基于 LLM 和 embedding，需要配置评估用的模型。
+
+```python
+# pip install ragas datasets langchain-openai
+from ragas import EvaluationDataset, evaluate
+from ragas.metrics import (
+    LLMContextPrecisionWithoutReference,   # 上下文精度（Context Precision，衡量检索结果的排序质量，是 retriever 质量的近似指标，无需标准答案）
+    Faithfulness,                          # 忠实度 / 幻觉检测
+    ResponseRelevancy,                     # 答案相关性
+)
+from ragas.llms import LangchainLLMWrapper
+from ragas.embeddings import LangchainEmbeddingsWrapper
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+# 1) 配置评估用的「裁判模型」和 embedding（Ragas 内部用它们打分）
+evaluator_llm = LangchainLLMWrapper(ChatOpenAI(model="gpt-4o-mini"))
+evaluator_emb = LangchainEmbeddingsWrapper(OpenAIEmbeddings(model="text-embedding-3-small"))
+
+# 2) 准备评估数据：每条含 问题 / 检索到的上下文 / 系统答案
+#    （这些是从你的 RAG 流水线里采集来的真实输入输出）
+dataset = EvaluationDataset.from_list([
+    {
+        "user_input": "RAG 能解决模型知识过时的问题吗？",
+        "retrieved_contexts": [
+            "RAG 在推理时从外部知识库检索最新文档并注入上下文，因此能引入训练截止日期之后的新知识。",
+        ],
+        "response": "可以。RAG 在推理时检索外部最新文档作为上下文，从而引入模型训练后产生的新知识。",
+    },
+    {
+        "user_input": "RAG 的检索用什么技术？",
+        "retrieved_contexts": [
+            "RAG 通常用向量检索：把文档切块后用 embedding 编码，再用相似度搜索召回。",
+        ],
+        # 故意制造一个「幻觉」答案：上下文没提 SQL，答案却编了
+        "response": "RAG 主要靠 SQL 全文索引检索，并用关键词精确匹配。",
+    },
+])
+
+# 3) 选择三元组指标并评估
+result = evaluate(
+    dataset=dataset,
+    metrics=[
+        LLMContextPrecisionWithoutReference(llm=evaluator_llm),  # context precision（检索排序质量）
+        Faithfulness(llm=evaluator_llm),                         # faithfulness
+        ResponseRelevancy(llm=evaluator_llm, embeddings=evaluator_emb),  # answer relevance
+    ],
+)
+
+print(result)                    # 打印各指标整体均分
+df = result.to_pandas()          # 转 DataFrame 看每条明细，定位是哪条拖低了分
+print(df[["user_input", "faithfulness", "answer_relevancy"]])
+# 你会看到第二条（编造 SQL 的）faithfulness 显著偏低 —— 幻觉被自动抓出来了
+```
+
+把这段接进 CI，每次改完 RAG 流水线自动重跑，三元组任一维度回归就报警——这就是 RAG 系统的「自动体检」。
+
+### 📚 推荐资料
+
+- [Ragas 官方文档](https://docs.ragas.io/) — 指标定义、API、最佳实践的权威来源。
+- [RAGAS 论文](https://arxiv.org/abs/2309.15217) — 三元组指标的原始定义与实现思路。
+- [TruLens RAG Triad](https://www.trulens.org/getting_started/core_concepts/rag_triad/) — 另一视角讲透 RAG 三元组，图示清晰。
+- [Pinecone: RAG Evaluation 指南](https://www.pinecone.io/learn/series/vector-databases-in-production-for-busy-engineers/rag-evaluation/) — 工程化落地视角的 RAG 评估实战。
+
+### 🛠 动手实践
+
+接入你 stage-02/03 做的 RAG 系统，采集 15 条真实「问题-上下文-答案」，用 Ragas 跑出三元组。然后**故意把 chunk 改小到极端（如 50 字符）**重跑一次。验收标准：观察并解释哪个指标变化最大（预期 context precision 受影响最明显），用数据说明「检索质量如何向下游传导」。
+
+## 第 4 节：黄金数据集、回归测试与 A/B 测试
+
+### 📖 知识点
+
+有了指标，还缺最关键的「评估对象」——**黄金数据集（Golden Dataset）**。它是你评估体系的「真理之源」，质量决定评估上限。构建黄金数据集有几条铁律：
+
+- **要有代表性**：覆盖真实流量分布，不能只挑你会的、简单的。**最值钱的样本是「线上真实失败的 case」**——把每个用户投诉、每个 bad case 都沉淀进数据集，数据集会越用越强。
+- **要有难度分层**：分「冒烟集」（10~20 条核心场景，每次提交都跑，秒级出结果）和「全量集」（几百条，覆盖边角，上线前或每日跑）。这是速度与覆盖的权衡。
+- **要包含「负样本/边界样本」**：模型该拒答的（越权、危险问题）、该说不知道的（知识库里没有的）——这些往往是事故高发区。
+- **要持续维护**：数据集不是一次性的，它随产品演进而生长。给样本打标签（按功能、难度、来源）方便切片分析。
+
+**回归测试（Regression Testing）**：把黄金数据集 + 指标 + 阈值卡口接进 CI，每次代码/Prompt 变更自动跑，**指标低于阈值就阻断合并**。这把 LLM 应用拉回了软件工程的轨道——你终于有了 LLM 版的「单元测试」。用 pytest 组织最自然：每条样本是一个测试用例，断言指标 ≥ 阈值。
+
+**A/B 测试**：离线评估再好也是「固定分布」，真实用户的反应只能在线上测。A/B 测试把流量按比例分给新旧两个版本，用**业务指标**（点踩率、人工满意度、任务完成率、转化率）做统计显著性检验来决定胜负。关键认知：**离线指标和在线业务指标常常不完全一致**——faithfulness 涨了不代表用户更满意（也许答案更啰嗦了）。离线评估负责「不犯错地快速筛掉烂版本」，在线 A/B 负责「在候选里选出用户真正喜欢的」。
+
+> **专家心法**：建立「失败即数据」的文化。每个线上 bad case 不是麻烦，是给黄金数据集的免费弹药。我的习惯是：任何一次线上事故，复盘的第一个 action item 永远是「把这个 case 加进回归集」，确保同样的错绝不发生第二次。这就是评估体系的复利。
+
+### 💻 代码示例
+
+用 pytest 把评估变成可在 CI 跑的回归测试，带阈值卡口。这是把 Evals 工程化、自动化的标准姿势。
+
+```python
+# pip install pytest deepeval
+# 用 DeepEval 的指标 + pytest，每条样本即一个测试用例
+# 文件名 test_rag_regression.py，CI 里直接 `pytest` 即可
+import pytest
+from deepeval import assert_test
+from deepeval.test_case import LLMTestCase
+from deepeval.metrics import FaithfulnessMetric, AnswerRelevancyMetric
+
+# 你的待测系统（接真实 RAG 流水线）
+def my_rag(question: str):
+    # 返回 (答案, 检索到的上下文列表)
+    ctx = ["RAG 在推理时检索外部文档注入上下文，从而引入新知识。"]
+    ans = "RAG 通过在推理时检索外部文档作为上下文，引入模型训练后的新知识。"
+    return ans, ctx
+
+# 黄金数据集（冒烟集，每次提交都跑）
+GOLDEN = [
+    {"q": "RAG 如何引入新知识？", "must_mention": "检索"},
+    {"q": "RAG 在什么时候检索？",  "must_mention": "推理"},
+]
+
+# 阈值卡口：低于此分则测试失败、阻断合并
+faithfulness = FaithfulnessMetric(threshold=0.7, model="gpt-4o-mini")
+relevancy    = AnswerRelevancyMetric(threshold=0.7, model="gpt-4o-mini")
+
+@pytest.mark.parametrize("item", GOLDEN)
+def test_rag_quality(item):
+    answer, contexts = my_rag(item["q"])
+    test_case = LLMTestCase(
+        input=item["q"],
+        actual_output=answer,
+        retrieval_context=contexts,
+    )
+    # 任一指标低于 threshold，assert_test 会让该用例失败
+    assert_test(test_case, [faithfulness, relevancy])
+    # 也可叠加确定性断言：核心关键词必须出现
+    assert item["must_mention"] in answer
+```
+
+```yaml
+# promptfoo 做 Prompt 版本 A/B 对照：promptfooconfig.yaml
+# 运行：npx promptfoo eval  —— 一条命令把多个 Prompt 在同一数据集上跑出对比表
+prompts:
+  - "简洁回答：{{question}}"
+  - "你是专家，请详尽分点回答：{{question}}"
+providers:
+  - openai:gpt-4o-mini
+tests:
+  - vars:
+      question: "RAG 和微调的区别？"
+    assert:
+      - type: contains-any        # 确定性断言
+        value: ["检索", "权重"]
+      - type: llm-rubric          # LLM-as-Judge 断言
+        value: "答案准确说明了 RAG 在推理时检索、微调更新权重的区别"
+```
+
+pytest 负责「卡门槛（回归）」，promptfoo 负责「比版本（A/B 对照）」——两者组合覆盖了离线评估的两大需求。
+
+### 📚 推荐资料
+
+- [DeepEval 官方文档](https://deepeval.com/docs/getting-started) — pytest 风格的 LLM 测试框架，CI 集成一流。
+- [promptfoo 官方文档](https://www.promptfoo.dev/docs/intro/) — 声明式 Prompt 评估与对比，A/B 与红队测试利器。
+- [构建高质量评估数据集（Hamel Husain）](https://hamel.dev/blog/posts/evals/#level-2-human-eval) — 黄金数据集与人工评估的实战方法论。
+- [Microsoft: LLM 应用的 A/B 测试](https://www.microsoft.com/en-us/research/group/experimentation-platform-exp/articles/) — 在线实验与统计显著性的工业实践参考。
+
+### 🛠 动手实践
+
+为你的项目建一个 `golden/` 目录，整理：5 条核心冒烟样本 + 3 条「应拒答/应说不知道」的负样本。写出 `test_rag_regression.py`，设 faithfulness 阈值 0.7 接入 `pytest`。验收标准：(1) 正常版本全绿；(2) 把 Prompt 里「只基于上下文回答」删掉后，至少一条负样本测试变红（证明卡口有效）。
+
+## 🎯 阶段实战项目：为 RAG 系统搭建自动化评估流水线
+
+**背景**：你负责一个企业知识库问答 RAG 系统，老板要求「每次改动都能用数据证明没退步」，并能定期产出质量报告。你要把前面所有零件组装成一条端到端的评估流水线。
+
+**要求**：
+
+1. **黄金数据集**：构建 ≥ 30 条数据集，明确分层打标签：`smoke`（冒烟，10 条）、`full`（全量，含边角）、`negative`（应拒答/应说不知道，≥ 5 条）。每条含问题、检索上下文、参考答案（如有）。
+2. **离线评估模块**：用 Ragas 实现 RAG 三元组（context relevance / faithfulness / answer relevance），跑出每条明细 + 分维度均分，导出 CSV/Markdown 报告。
+3. **回归测试卡口**：用 pytest + DeepEval 把冒烟集做成 CI 测试，设定阈值，指标不达标即失败退出（exit code ≠ 0）。
+4. **LLM-as-Judge 对照**：用成对比较（含位置去偏）实现「新旧两版 Prompt」的擂台，输出胜率统计。
+5. **报告产出**：一条命令生成一份 Markdown 评估报告，含三元组分维度得分、回归是否通过、A/B 胜率、以及「相比上一版的 diff」。
+
+**技术要点**：Ragas 三元组、DeepEval/pytest 回归卡口、LLM-as-Judge 位置去偏、数据集分层切片、报告自动生成。
+
+**验收标准**：
+- 在「健康版本」上：回归全绿，三元组各维度 ≥ 0.75。
+- 故意注入一个 bug（如关掉 rerank、或删除「只基于上下文」指令），重跑能**自动捕获并指出是哪个维度回归**，CI 卡口变红。
+- 报告可读，非工程同学也能看懂「这次改动好还是坏」。
+
+**可选进阶**：(1) 接入在线评估——给问答界面加「点赞/点踩」按钮，把点踩样本自动沉淀进 `negative` 数据集，形成「失败即数据」的闭环；(2) 用 GitHub Actions 让评估在每个 PR 上自动跑并把报告贴到 PR 评论里。
